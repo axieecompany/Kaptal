@@ -8,6 +8,27 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
+// Custom error class for API errors - extends Error for proper inheritance
+export class ApiError extends Error {
+  isApiError = true;
+  
+  constructor(message: string) {
+    super(message);
+    this.name = 'ApiError';
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+
+// Suppress Next.js error overlay for API errors in development
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event.reason instanceof ApiError) {
+      // Prevent the error from showing in Next.js error overlay
+      event.preventDefault();
+    }
+  });
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -33,13 +54,13 @@ async function fetchApi<T>(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
-    throw new Error('Sessão expirada. Por favor, faça login novamente.');
+    return Promise.reject(new ApiError('Sessão expirada. Por favor, faça login novamente.'));
   }
 
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || 'Algo deu errado');
+    return Promise.reject(new ApiError(data.message || 'Algo deu errado'));
   }
 
   return data;
@@ -170,6 +191,7 @@ export interface RuleItem {
   name: string;
   amount: number;
   ruleId: string;
+  rule?: IncomeRule;
 }
 
 export interface IncomeRule {
@@ -178,6 +200,9 @@ export interface IncomeRule {
   percentage: number;
   color: string;
   icon: string;
+  month: number;
+  year: number;
+  baseIncome: number;
   items: RuleItem[];
 }
 
@@ -186,6 +211,9 @@ export interface CreateIncomeRuleData {
   percentage: number;
   color?: string;
   icon?: string;
+  month: number;
+  year: number;
+  baseIncome?: number;
 }
 
 export interface CreateRuleItemData {
@@ -193,17 +221,40 @@ export interface CreateRuleItemData {
   amount: number;
 }
 
+export interface GetRulesResponse {
+  success: boolean;
+  data: IncomeRule[];
+  totalPercentage: number;
+  baseIncome: number;
+  month: number;
+  year: number;
+  usingFallback: boolean;
+  requestedMonth: number;
+  requestedYear: number;
+}
+
 export const incomeRulesApi = {
-  getAll: () => 
-    fetchApi<{ success: boolean; data: IncomeRule[]; totalPercentage: number }>('/income-rules'),
+  getAll: (month?: number, year?: number) => {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month.toString());
+    if (year) params.append('year', year.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return fetchApi<GetRulesResponse>(`/income-rules${query}`);
+  },
   
   create: (data: CreateIncomeRuleData) =>
     fetchApi<{ success: boolean; data: IncomeRule }>('/income-rules', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  copyFromMonth: (fromMonth: number, fromYear: number, toMonth: number, toYear: number, baseIncome?: number) =>
+    fetchApi<{ success: boolean; message: string }>('/income-rules/copy-from-month', {
+      method: 'POST',
+      body: JSON.stringify({ fromMonth, fromYear, toMonth, toYear, baseIncome }),
+    }),
   
-  update: (id: string, data: Partial<CreateIncomeRuleData>) =>
+  update: (id: string, data: Partial<CreateIncomeRuleData> & { baseIncome?: number }) =>
     fetchApi<{ success: boolean; data: IncomeRule }>(`/income-rules/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -230,6 +281,40 @@ export const incomeRulesApi = {
   deleteItem: (ruleId: string, itemId: string) =>
     fetchApi<{ success: boolean }>(`/income-rules/${ruleId}/items/${itemId}`, {
       method: 'DELETE',
+    }),
+
+  getItemSpending: (ruleId: string, itemId: string) =>
+    fetchApi<{
+      success: boolean;
+      data: {
+        ruleItem: { id: string; name: string; budget: number };
+        totalSpent: number;
+        remaining: number;
+        percentage: number;
+        isOverBudget: boolean;
+        overAmount: number;
+        transactionCount: number;
+      };
+    }>(`/income-rules/${ruleId}/items/${itemId}/spending`),
+
+  getRuleSpending: (ruleId: string) =>
+    fetchApi<{
+      success: boolean;
+      data: {
+        ruleId: string;
+        totalSpent: number;
+        budgetAmount: number;
+        remaining: number;
+        percentage: number;
+        isOverBudget: boolean;
+        transactionCount: number;
+      };
+    }>(`/income-rules/${ruleId}/spending`),
+
+  resetToDefaults: (month: number, year: number, baseIncome: number) =>
+    fetchApi<{ success: boolean; message: string; data: IncomeRule[] }>('/income-rules/reset-to-defaults', {
+      method: 'POST',
+      body: JSON.stringify({ month, year, baseIncome }),
     }),
 };
 
@@ -259,6 +344,10 @@ export interface Transaction {
   date: string;
   categoryId: string | null;
   category: Category | null;
+  ruleItemId?: string | null;
+  ruleItem?: RuleItem | null;
+  incomeRuleId?: string | null;
+  incomeRule?: IncomeRule | null;
 }
 
 export interface CreateTransactionData {
@@ -267,6 +356,8 @@ export interface CreateTransactionData {
   type: 'INCOME' | 'EXPENSE';
   date?: string;
   categoryId?: string | null;
+  ruleItemId?: string | null;
+  incomeRuleId?: string | null;
 }
 
 export interface TransactionFilters {
@@ -353,4 +444,82 @@ export interface BudgetsData {
   year: number;
 }
 
+// Savings Goals
+export interface SavingsDeposit {
+  id: string;
+  amount: number;
+  note: string | null;
+  date: string;
+  goalId: string;
+}
+
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: string;
+  icon: string;
+  color: string;
+  isCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  progress: number;
+  monthlyRequired: number;
+  monthsRemaining: number;
+  remaining: number;
+  status: 'on_track' | 'behind' | 'completed' | 'overdue';
+  deposits: SavingsDeposit[];
+}
+
+export interface CreateSavingsGoalData {
+  name: string;
+  targetAmount: number;
+  deadline: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface SavingsGoalResponse {
+  success: boolean;
+  data: SavingsGoal[];
+}
+
+export const savingsGoalsApi = {
+  getAll: (): Promise<SavingsGoalResponse> =>
+    fetchApi('/savings-goals'),
+
+  create: (data: CreateSavingsGoalData): Promise<{ success: boolean; data: SavingsGoal }> =>
+    fetchApi('/savings-goals', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<CreateSavingsGoalData & { isCompleted: boolean }>): Promise<{ success: boolean; data: SavingsGoal }> =>
+    fetchApi(`/savings-goals/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string): Promise<{ success: boolean; message: string }> =>
+    fetchApi(`/savings-goals/${id}`, {
+      method: 'DELETE',
+    }),
+
+  deposit: (id: string, data: { amount: number; note?: string; date?: string }): Promise<{ success: boolean; data: { deposit: SavingsDeposit; goal: SavingsGoal } }> =>
+    fetchApi(`/savings-goals/${id}/deposit`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getDeposits: (id: string): Promise<{ success: boolean; data: SavingsDeposit[] }> =>
+    fetchApi(`/savings-goals/${id}/deposits`),
+
+  deleteDeposit: (goalId: string, depositId: string): Promise<{ success: boolean; message: string }> =>
+    fetchApi(`/savings-goals/${goalId}/deposits/${depositId}`, {
+      method: 'DELETE',
+    }),
+};
+
 export default authApi;
+

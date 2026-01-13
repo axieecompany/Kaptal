@@ -9,6 +9,8 @@ const createTransactionSchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']).default('EXPENSE'),
   date: z.string().datetime().optional(),
   categoryId: z.string().uuid().optional().nullable(),
+  ruleItemId: z.string().uuid().optional().nullable(),
+  incomeRuleId: z.string().uuid().optional().nullable(),
 });
 
 const updateTransactionSchema = createTransactionSchema.partial();
@@ -19,6 +21,7 @@ const listTransactionsSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   categoryId: z.string().uuid().optional(),
+  incomeRuleId: z.string().uuid().optional(),
   type: z.enum(['INCOME', 'EXPENSE']).optional(),
 });
 
@@ -40,19 +43,28 @@ export async function getTransactions(req: Request, res: Response): Promise<void
       return;
     }
 
-    const { page, limit, startDate, endDate, categoryId, type } = validation.data;
+    const { page, limit, startDate, endDate, categoryId, incomeRuleId, type } = validation.data;
 
     const where: Prisma.TransactionWhereInput = { userId };
 
     if (startDate) where.date = { ...where.date as object, gte: new Date(startDate) };
     if (endDate) where.date = { ...where.date as object, lte: new Date(endDate) };
     if (categoryId) where.categoryId = categoryId;
+    if (incomeRuleId) where.incomeRuleId = incomeRuleId;
     if (type) where.type = type;
 
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
-        include: { category: true },
+        include: { 
+          category: true,
+          incomeRule: true,
+          ruleItem: {
+            include: {
+              rule: true
+            }
+          }
+        },
         orderBy: { date: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -94,7 +106,7 @@ export async function createTransaction(req: Request, res: Response): Promise<vo
       return;
     }
 
-    const { description, amount, type, date, categoryId } = validation.data;
+    const { description, amount, type, date, categoryId, ruleItemId, incomeRuleId } = validation.data;
 
     // Verify category belongs to user if provided
     if (categoryId) {
@@ -107,6 +119,31 @@ export async function createTransaction(req: Request, res: Response): Promise<vo
       }
     }
 
+    // Verify income rule belongs to user if provided
+    if (incomeRuleId) {
+      const incomeRule = await prisma.incomeRule.findFirst({
+        where: { id: incomeRuleId, userId },
+      });
+      if (!incomeRule) {
+        res.status(400).json({ success: false, message: 'Regra de orçamento não encontrada' });
+        return;
+      }
+    }
+
+    // Verify rule item belongs to user if provided
+    if (ruleItemId) {
+      const ruleItem = await prisma.ruleItem.findFirst({
+        where: { 
+          id: ruleItemId,
+          rule: { userId }
+        },
+      });
+      if (!ruleItem) {
+        res.status(400).json({ success: false, message: 'Subitem de orçamento não encontrado' });
+        return;
+      }
+    }
+
     const transaction = await prisma.transaction.create({
       data: {
         description,
@@ -114,9 +151,19 @@ export async function createTransaction(req: Request, res: Response): Promise<vo
         type,
         date: date ? new Date(date) : new Date(),
         categoryId,
+        incomeRuleId,
+        ruleItemId,
         userId,
       },
-      include: { category: true },
+      include: { 
+        category: true,
+        incomeRule: true,
+        ruleItem: {
+          include: {
+            rule: true
+          }
+        }
+      },
     });
 
     res.status(201).json({ success: true, data: transaction });
@@ -155,15 +202,36 @@ export async function updateTransaction(req: Request, res: Response): Promise<vo
       return;
     }
 
-    const { amount, date, ...rest } = validation.data;
+    const { amount, date, incomeRuleId, ...rest } = validation.data;
+    
+    // Verify income rule belongs to user if provided
+    if (incomeRuleId) {
+      const incomeRule = await prisma.incomeRule.findFirst({
+        where: { id: incomeRuleId, userId },
+      });
+      if (!incomeRule) {
+        res.status(400).json({ success: false, message: 'Regra de orçamento não encontrada' });
+        return;
+      }
+    }
+
     const transaction = await prisma.transaction.update({
       where: { id },
       data: {
         ...rest,
         ...(amount !== undefined && { amount: new Prisma.Decimal(amount) }),
         ...(date !== undefined && { date: new Date(date) }),
+        ...(incomeRuleId !== undefined && { incomeRuleId }),
       },
-      include: { category: true },
+      include: { 
+        category: true,
+        incomeRule: true,
+        ruleItem: {
+          include: {
+            rule: true
+          }
+        }
+      },
     });
 
     res.json({ success: true, data: transaction });

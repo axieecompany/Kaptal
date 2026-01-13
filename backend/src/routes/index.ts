@@ -4,6 +4,7 @@ import categoryBudgetRoutes from './categoryBudgetRoutes.js';
 import categoryRoutes from './categoryRoutes.js';
 import goalRoutes from './goalRoutes.js';
 import incomeRuleRoutes from './incomeRuleRoutes.js';
+import savingsGoalRoutes from './savingsGoalRoutes.js';
 import statsRoutes from './statsRoutes.js';
 import transactionRoutes from './transactionRoutes.js';
 
@@ -26,5 +27,7 @@ router.use('/transactions', transactionRoutes);
 router.use('/stats', statsRoutes);
 router.use('/goals', goalRoutes);
 router.use('/income-rules', incomeRuleRoutes);
+router.use('/savings-goals', savingsGoalRoutes);
 
 export default router;
+

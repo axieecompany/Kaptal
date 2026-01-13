@@ -11,7 +11,7 @@ export default function Home() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center">
               <Wallet className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold gradient-text">Nexi</span>
+            <span className="text-2xl font-bold gradient-text">Kaptal</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="btn-secondary">
@@ -171,10 +171,10 @@ export default function Home() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center">
               <Wallet className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-white/80">Nexi</span>
+            <span className="font-semibold text-white/80">Kaptal</span>
           </div>
           <p className="text-white/40 text-sm">
-            © {new Date().getFullYear()} Nexi. Todos os direitos reservados.
+            © {new Date().getFullYear()} Kaptal. Todos os direitos reservados.
           </p>
         </div>
       </footer>

@@ -3,11 +3,15 @@
 import { useAuth } from '@/lib/auth';
 import {
     ArrowLeftRight,
+    Calculator,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
     LayoutDashboard,
     LogOut,
     Menu,
-    Sliders,
-    Tags,
+    PiggyBank,
     Target,
     TrendingUp,
     Wallet,
@@ -17,20 +21,47 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/transactions', label: 'Transações', icon: ArrowLeftRight },
-  { href: '/dashboard/categories', label: 'Categorias', icon: Tags },
-  { href: '/dashboard/goals', label: 'Metas', icon: Target },
-  { href: '/dashboard/rules', label: 'Regras', icon: Sliders },
-  { href: '/dashboard/stocks', label: 'Ações', icon: TrendingUp },
-  { href: '/dashboard/patrimony', label: 'Patrimônio', icon: Wallet },
+const navGroups = [
+  {
+    title: 'Poupador',
+    id: 'poupador',
+    icon: PiggyBank,
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/dashboard/transactions', label: 'Transações', icon: ArrowLeftRight },
+      { href: '/dashboard/goals', label: 'Gastos', icon: Target },
+      { href: '/dashboard/savings', label: 'Metas', icon: PiggyBank },
+      { href: '/dashboard/simulator', label: 'Simulador', icon: Calculator },
+    ]
+  },
+  {
+    title: 'Investidor',
+    id: 'investidor',
+    icon: TrendingUp,
+    items: [
+      { href: '/dashboard/stocks', label: 'Ações', icon: TrendingUp },
+      { href: '/dashboard/patrimony', label: 'Patrimônio', icon: Wallet },
+    ]
+  }
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['poupador', 'investidor']));
+
+  const toggleGroup = (id: string) => {
+    if (isCollapsed) return;
+    const newGroups = new Set(expandedGroups);
+    if (newGroups.has(id)) {
+      newGroups.delete(id);
+    } else {
+      newGroups.add(id);
+    }
+    setExpandedGroups(newGroups);
+  };
 
   return (
     <>
@@ -52,70 +83,120 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-40
-        w-64 bg-[#0f0f1a]/95 backdrop-blur-xl border-r border-white/10
-        transform transition-transform duration-300 ease-in-out
+        fixed lg:sticky top-0 left-0 z-40 h-screen
+        ${isCollapsed ? 'lg:w-20' : 'w-64'} 
+        bg-[#0f0f1a]/95 backdrop-blur-xl border-r border-white/10
+        transform transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative">
+          {/* Collapse Toggle Desktop */}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-primary-500 rounded-full items-center justify-center text-white border border-white/10 shadow-lg z-50 hover:bg-primary-400 transition-colors"
+          >
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+
           {/* Logo */}
-          <div className="p-6 border-b border-white/10">
+          <div className={`p-6 border-b border-white/10 ${isCollapsed ? 'flex justify-center' : ''}`}>
             <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center shrink-0">
                 <Wallet className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold gradient-text">Kaptal</span>
+              {!isCollapsed && <span className="text-xl font-bold gradient-text">Kaptal</span>}
             </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href || 
-                (item.href !== '/dashboard' && pathname.startsWith(item.href));
-              const Icon = item.icon;
-              
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
+          <nav className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar">
+            {navGroups.map((group) => (
+              <div key={group.id} className="space-y-1">
+                {/* Group Header */}
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  disabled={isCollapsed}
                   className={`
-                    flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                    ${isActive 
-                      ? 'bg-primary-500/20 text-primary-400 font-medium' 
-                      : 'text-white/60 hover:bg-white/5 hover:text-white'}
+                    w-full flex items-center justify-between px-3 py-2 rounded-lg
+                    text-xs font-bold uppercase tracking-wider transition-colors
+                    ${isCollapsed ? 'justify-center text-white/20' : 'text-white/40 hover:text-white/60'}
                   `}
                 >
-                  <Icon className="w-5 h-5" />
-                  {item.label}
-                </Link>
-              );
-            })}
+                  {isCollapsed ? (
+                     <div className="h-px w-8 bg-white/10" />
+                  ) : (
+                    <>
+                      <span>{group.title}</span>
+                      {expandedGroups.has(group.id) ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </>
+                  )}
+                </button>
+
+                {/* Group Items */}
+                {(expandedGroups.has(group.id) || isCollapsed) && (
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.href || 
+                        (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                      const Icon = item.icon;
+                      
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className={`
+                            flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                            ${isCollapsed ? 'justify-center' : ''}
+                            ${isActive 
+                              ? 'bg-primary-500/20 text-primary-400 font-medium' 
+                              : 'text-white/60 hover:bg-white/5 hover:text-white'}
+                          `}
+                          title={isCollapsed ? item.label : ''}
+                        >
+                          <Icon className="w-5 h-5 shrink-0" />
+                          {!isCollapsed && <span>{item.label}</span>}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
           </nav>
 
           {/* User section */}
           <div className="p-4 border-t border-white/10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center">
+            <div className={`flex items-center gap-3 mb-4 ${isCollapsed ? 'justify-center' : ''}`}>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center shrink-0">
                 <span className="text-white font-medium">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-medium truncate">{user?.name}</p>
-                <p className="text-white/40 text-sm truncate">{user?.email}</p>
-              </div>
+              {!isCollapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-medium truncate">{user?.name}</p>
+                  <p className="text-white/40 text-sm truncate">{user?.email}</p>
+                </div>
+              )}
             </div>
             <button
               onClick={() => {
                 logout();
                 window.location.href = '/';
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 rounded-xl text-white/60 hover:bg-white/5 hover:text-white transition-all"
+              className={`
+                flex items-center gap-2 w-full px-4 py-2 rounded-xl text-white/60 hover:bg-white/5 hover:text-white transition-all
+                ${isCollapsed ? 'justify-center' : ''}
+              `}
+              title={isCollapsed ? 'Sair' : ''}
             >
-              <LogOut className="w-5 h-5" />
-              Sair
+              <LogOut className="w-5 h-5 shrink-0" />
+              {!isCollapsed && <span>Sair</span>}
             </button>
           </div>
         </div>
@@ -123,3 +204,4 @@ export default function Sidebar() {
     </>
   );
 }
+

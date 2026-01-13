@@ -13,6 +13,12 @@ router.get('/', incomeRuleController.getAll);
 // POST /income-rules - Create a new income rule
 router.post('/', incomeRuleController.create);
 
+// POST /income-rules/copy-from-month - Copy rules from one month to another
+router.post('/copy-from-month', incomeRuleController.copyFromMonth);
+
+// POST /income-rules/reset-to-defaults - Reset rules to defaults for a specific month
+router.post('/reset-to-defaults', incomeRuleController.resetToDefaults);
+
 // PUT /income-rules/:id - Update an income rule
 router.put('/:id', incomeRuleController.update);
 
@@ -28,5 +34,12 @@ router.put('/:ruleId/items/:itemId', incomeRuleController.updateItem);
 
 // DELETE /income-rules/:ruleId/items/:itemId - Delete an item
 router.delete('/:ruleId/items/:itemId', incomeRuleController.deleteItem);
+
+// GET /income-rules/:ruleId/items/:itemId/spending - Get spending for an item
+// GET /income-rules/:ruleId/items/:itemId/spending - Get spending for an item
+router.get('/:ruleId/items/:itemId/spending', incomeRuleController.getItemSpending);
+
+// GET /income-rules/:ruleId/spending - Get total spending for a rule
+router.get('/:ruleId/spending', incomeRuleController.getRuleSpending);
 
 export default router;

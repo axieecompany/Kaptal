@@ -19,7 +19,7 @@ export default function AuthLayout({
             <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
               <Wallet className="w-8 h-8 text-white" />
             </div>
-            <span className="text-4xl font-bold text-white">Nexi</span>
+            <span className="text-4xl font-bold text-white">Kaptal</span>
           </Link>
           
           <h1 className="text-4xl font-bold text-white mb-4">
@@ -60,7 +60,7 @@ export default function AuthLayout({
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center">
               <Wallet className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold gradient-text">Nexi</span>
+            <span className="text-2xl font-bold gradient-text">Kaptal</span>
           </div>
           
           {children}

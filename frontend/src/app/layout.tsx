@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Nexi - Finanças Pessoais',
-  description: 'Controle suas finanças de forma inteligente com o Nexi. Acompanhe gastos, investimentos e muito mais.',
+  title: 'Kaptal - Finanças Pessoais',
+  description: 'Controle suas finanças de forma inteligente com o Kaptal. Acompanhe gastos, investimentos e muito mais.',
 };
 
 export default function RootLayout({

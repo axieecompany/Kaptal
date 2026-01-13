@@ -2,8 +2,10 @@
 
 import {
     categoriesApi,
+    incomeRulesApi,
     transactionsApi,
     type Category,
+    type IncomeRule,
     type Transaction,
     type TransactionFilters
 } from '@/lib/api';
@@ -38,12 +40,14 @@ function TransactionModal({
   onClose, 
   onSave,
   categories,
+  rules,
   editTransaction
 }: { 
   isOpen: boolean; 
   onClose: () => void;
   onSave: () => void;
   categories: Category[];
+  rules: IncomeRule[];
   editTransaction?: Transaction | null;
 }) {
   const [description, setDescription] = useState('');
@@ -51,6 +55,7 @@ function TransactionModal({
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [ruleItemId, setRuleItemId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,13 +65,19 @@ function TransactionModal({
       setAmount(String(editTransaction.amount));
       setType(editTransaction.type);
       setDate(new Date(editTransaction.date).toISOString().split('T')[0]);
-      setCategoryId(editTransaction.categoryId);
+      
+      // Use incomeRuleId as categoryId for UI if available, otherwise use categoryId
+      setCategoryId(editTransaction.incomeRuleId || editTransaction.categoryId);
+      
+      // @ts-ignore - ruleItem might exist
+      setRuleItemId(editTransaction.ruleItem?.id || null);
     } else {
       setDescription('');
       setAmount('');
       setType('EXPENSE');
       setDate(new Date().toISOString().split('T')[0]);
       setCategoryId(null);
+      setRuleItemId(null);
     }
   }, [editTransaction, isOpen]);
 
@@ -78,12 +89,36 @@ function TransactionModal({
     setError('');
 
     try {
+      let finalIncomeRuleId: string | null = null;
+      let finalCategoryId: string | null = categoryId;
+
+      // If we have a ruleItemId, find the parent rule
+      if (ruleItemId) {
+        const parentRule = rules.find(r => r.items?.some(i => i.id === ruleItemId));
+        if (parentRule) {
+          finalIncomeRuleId = parentRule.id;
+        }
+        finalCategoryId = null; // Clear categoryId if using rule/subitem
+      } 
+      // If we have a categoryId but it's actually a Rule ID (from our select logic)
+      // We assume everything selected from the current dropdown is a Rule or Item
+      else if (categoryId) {
+        // Check if this ID exists in rules list
+        const isRule = rules.some(r => r.id === categoryId);
+        if (isRule) {
+          finalIncomeRuleId = categoryId;
+          finalCategoryId = null;
+        }
+      }
+
       const data = {
         description,
         amount: parseFloat(amount),
         type,
         date: new Date(date).toISOString(),
-        categoryId,
+        categoryId: finalCategoryId,
+        ruleItemId,
+        incomeRuleId: finalIncomeRuleId,
       };
 
       if (editTransaction) {
@@ -183,17 +218,69 @@ function TransactionModal({
           <div>
             <label className="input-label">Categoria</label>
             <select
-              value={categoryId || ''}
-              onChange={(e) => setCategoryId(e.target.value || null)}
+              value={
+                ruleItemId ? `item:${ruleItemId}` : 
+                categoryId ? `rule:${categoryId}` : 
+                ''
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                
+                // Check if value is a ruleItemId (format starts with "item:")
+                if (value.startsWith('item:')) {
+                  const itemId = value.replace('item:', '');
+                  setRuleItemId(itemId);
+                  setCategoryId(null);
+                } else if (value.startsWith('rule:')) {
+                  // It's a rule (main category)
+                  const ruleId = value.replace('rule:', '');
+                  setCategoryId(ruleId);
+                  setRuleItemId(null);
+                } else {
+                  // Empty or other
+                  setCategoryId(null);
+                  setRuleItemId(null);
+                }
+              }}
               className="input-field"
             >
               <option value="">Sem categoria</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name}
-                </option>
+              
+              {/* Rules with subitems - each rule as its own optgroup */}
+              {rules.map((rule) => (
+                <optgroup key={rule.id} label={`${rule.icon} ${rule.name}`}>
+                  {/* The rule itself as main category */}
+                  <option value={`rule:${rule.id}`}>
+                    {rule.icon} {rule.name} (Geral)
+                  </option>
+                  {/* Subitems */}
+                  {rule.items && rule.items.map((item) => (
+                    <option 
+                      key={item.id} 
+                      value={`item:${item.id}`}
+                    >
+                      └ {item.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
+            {ruleItemId && (() => {
+              // Find the selected subitem name
+              let selectedItemName = '';
+              for (const rule of rules) {
+                const item = rule.items?.find(i => i.id === ruleItemId);
+                if (item) {
+                  selectedItemName = `${rule.icon} ${rule.name} → ${item.name}`;
+                  break;
+                }
+              }
+              return selectedItemName ? (
+                <p className="text-primary-400 text-sm mt-1">
+                  {selectedItemName}
+                </p>
+              ) : null;
+            })()}
           </div>
 
           {error && (
@@ -259,6 +346,7 @@ function DeleteModal({
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [rules, setRules] = useState<IncomeRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
@@ -271,13 +359,20 @@ export default function TransactionsPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [transactionsRes, categoriesRes] = await Promise.all([
+      const month = new Date().getMonth() + 1;
+      const year = new Date().getFullYear();
+      
+      const [transactionsRes, categoriesRes, rulesRes] = await Promise.all([
         transactionsApi.getAll(filters),
         categoriesApi.getAllFlat(),
+        incomeRulesApi.getAll(month, year),
       ]);
       setTransactions(transactionsRes.data);
       setPagination(transactionsRes.pagination);
       setCategories(categoriesRes.data);
+      if (rulesRes.success) {
+        setRules(rulesRes.data);
+      }
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {
@@ -322,16 +417,16 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Transações</h1>
-          <p className="text-white/60">Gerencie suas receitas e despesas</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Transações</h1>
+          <p className="text-white/60 text-sm sm:text-base">Gerencie suas receitas e despesas</p>
         </div>
         <button
           onClick={() => { setEditTransaction(null); setIsModalOpen(true); }}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
         >
           <Plus className="w-5 h-5" />
           Nova Transação
@@ -430,33 +525,39 @@ export default function TransactionsPage() {
               {transactions.map((transaction) => (
                 <div 
                   key={transaction.id}
-                  className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors group"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 hover:bg-white/5 transition-colors group gap-3"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                       transaction.type === 'INCOME' 
                         ? 'bg-green-500/20' 
                         : 'bg-red-500/20'
                     }`}>
-                      <span className="text-xl">
-                        {transaction.category?.icon || (transaction.type === 'INCOME' ? '💰' : '💸')}
+                      <span className="text-lg sm:text-xl">
+                        {transaction.category?.icon || 
+                         transaction.incomeRule?.icon || 
+                         (transaction.ruleItem?.rule?.icon) || 
+                         (transaction.type === 'INCOME' ? '💰' : '💸')}
                       </span>
                     </div>
-                    <div>
-                      <p className="text-white font-medium">{transaction.description}</p>
-                      <p className="text-white/40 text-sm">
-                        {transaction.category?.name || 'Sem categoria'} • {formatDate(transaction.date)}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white font-medium truncate text-sm sm:text-base">{transaction.description}</p>
+                      <p className="text-white/40 text-xs sm:text-sm truncate">
+                        {transaction.category?.name || 
+                         transaction.incomeRule?.name || 
+                         (transaction.ruleItem ? `${transaction.ruleItem.rule?.name} → ${transaction.ruleItem.name}` : null) || 
+                         'Sem categoria'} • {formatDate(transaction.date)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`text-lg font-semibold ${
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-13 sm:pl-0">
+                    <span className={`text-base sm:text-lg font-semibold ${
                       transaction.type === 'INCOME' ? 'text-green-400' : 'text-red-400'
                     }`}>
                       {transaction.type === 'INCOME' ? '+' : '-'}
                       {formatCurrency(Number(transaction.amount))}
                     </span>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleEdit(transaction)}
                         className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
@@ -520,6 +621,7 @@ export default function TransactionsPage() {
         onClose={handleCloseModal}
         onSave={loadData}
         categories={categories}
+        rules={rules}
         editTransaction={editTransaction}
       />
 
