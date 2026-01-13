@@ -1,4 +1,4 @@
-# Nexi - SaaS de Finanças Pessoais
+# Kaptal - SaaS de Finanças Pessoais
 
 Sistema de finanças pessoais com controle de gastos, investimentos e integração com a bolsa de valores.
 
@@ -58,8 +58,8 @@ cp .env.example .env
 
 3. Edite o `.env` com suas configurações:
 ```env
-# Database (crie o banco 'nexi' no PostgreSQL)
-DATABASE_URL="postgresql://user:password@localhost:5432/nexi"
+# Database (crie o banco 'kaptal' no PostgreSQL)
+DATABASE_URL="postgresql://user:password@localhost:5432/kaptal"
 
 # JWT (use uma chave forte em produção)
 JWT_SECRET="sua-chave-secreta-aqui"
@@ -70,7 +70,7 @@ SMTP_HOST=""
 SMTP_PORT=""
 SMTP_USER=""
 SMTP_PASS=""
-EMAIL_FROM="Nexi <noreply@nexi.com>"
+EMAIL_FROM="kaptal <noreply@kaptal.com>"
 
 # Server
 PORT=3001
@@ -110,47 +110,6 @@ npm install
 ```bash
 npm run dev
 ```
-
-## 🔐 Fluxo de Autenticação
-
-### Registro
-1. Usuário preenche nome, email e senha
-2. Sistema envia código de 6 dígitos por email
-3. Usuário verifica o código
-4. Conta é ativada
-
-### Login
-1. Usuário insere email e senha
-2. Sistema envia código de 6 dígitos por email
-3. Usuário verifica o código
-4. JWT é gerado e o usuário é autenticado
-
-## 📧 Email em Desenvolvimento
-
-Se você não configurar as variáveis SMTP, o sistema criará automaticamente uma conta no [Ethereal](https://ethereal.email/). Os emails aparecerão no console com um link para visualização.
-
-## 🔗 Endpoints da API
-
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/api/auth/register` | Registrar novo usuário |
-| POST | `/api/auth/verify-email` | Verificar código de email |
-| POST | `/api/auth/login` | Iniciar login |
-| POST | `/api/auth/verify-login` | Verificar código de login |
-| POST | `/api/auth/resend-code` | Reenviar código |
-| GET | `/api/auth/me` | Obter usuário autenticado |
-| GET | `/api/health` | Health check |
-
-## 📝 Próximas Features
-
-- [ ] Dashboard de finanças
-- [ ] CRUD de transações
-- [ ] Categorias de gastos
-- [ ] Gráficos e visualizações
-- [ ] Registro de investimentos
-- [ ] Integração com API da B3
-- [ ] Ticker de ações em tempo real
-
 ## 📄 Licença
 
 MIT
