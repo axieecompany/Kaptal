@@ -1,21 +1,25 @@
 'use client';
 
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/lib/auth';
 import {
-    ArrowLeftRight,
-    Calculator,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    ChevronUp,
-    LayoutDashboard,
-    LogOut,
-    Menu,
-    PiggyBank,
-    Target,
-    TrendingUp,
-    Wallet,
-    X
+  ArrowLeftRight,
+  Calculator,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  HelpCircle,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  PiggyBank,
+  Scale,
+  Target,
+  TrendingUp,
+  UserCircle,
+  Wallet,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -32,6 +36,7 @@ const navGroups = [
       { href: '/dashboard/goals', label: 'Gastos', icon: Target },
       { href: '/dashboard/savings', label: 'Metas', icon: PiggyBank },
       { href: '/dashboard/simulator', label: 'Simulador', icon: Calculator },
+      { href: '/dashboard/profile', label: 'Perfil', icon: UserCircle },
     ]
   },
   {
@@ -41,6 +46,15 @@ const navGroups = [
     items: [
       { href: '/dashboard/stocks', label: 'Ações', icon: TrendingUp },
       { href: '/dashboard/patrimony', label: 'Patrimônio', icon: Wallet },
+    ]
+  },
+  {
+    title: 'Ajuda',
+    id: 'ajuda',
+    icon: HelpCircle,
+    items: [
+      { href: '/dashboard/help', label: 'Dúvidas', icon: HelpCircle },
+      { href: '/dashboard/terms', label: 'Termos de Uso', icon: Scale },
     ]
   }
 ];
@@ -68,7 +82,7 @@ export default function Sidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl bg-white/10 backdrop-blur text-white"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl bg-current/10 backdrop-blur text-[var(--foreground)]"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
@@ -85,7 +99,7 @@ export default function Sidebar() {
       <aside className={`
         fixed lg:sticky top-0 left-0 z-40 h-screen
         ${isCollapsed ? 'lg:w-20' : 'w-64'} 
-        bg-[#0f0f1a]/95 backdrop-blur-xl border-r border-white/10
+        bg-[var(--sidebar-bg)] backdrop-blur-xl border-r border-[var(--sidebar-border)]
         transform transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
@@ -98,14 +112,15 @@ export default function Sidebar() {
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
 
-          {/* Logo */}
-          <div className={`p-6 border-b border-white/10 ${isCollapsed ? 'flex justify-center' : ''}`}>
+          {/* Logo & Theme Toggle */}
+          <div className={`p-6 border-b border-[var(--sidebar-border)] flex items-center justify-between ${isCollapsed ? 'flex-col gap-4' : ''}`}>
             <Link href="/dashboard" className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center shrink-0">
                 <Wallet className="w-6 h-6 text-white" />
               </div>
               {!isCollapsed && <span className="text-xl font-bold gradient-text">Kaptal</span>}
             </Link>
+            <ThemeToggle />
           </div>
 
           {/* Navigation */}
@@ -119,11 +134,11 @@ export default function Sidebar() {
                   className={`
                     w-full flex items-center justify-between px-3 py-2 rounded-lg
                     text-xs font-bold uppercase tracking-wider transition-colors
-                    ${isCollapsed ? 'justify-center text-white/20' : 'text-white/40 hover:text-white/60'}
+                    ${isCollapsed ? 'justify-center opacity-20' : 'opacity-40 hover:opacity-100'}
                   `}
                 >
                   {isCollapsed ? (
-                     <div className="h-px w-8 bg-white/10" />
+                     <div className="h-px w-8 bg-current opacity-10" />
                   ) : (
                     <>
                       <span>{group.title}</span>
@@ -153,8 +168,8 @@ export default function Sidebar() {
                             flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
                             ${isCollapsed ? 'justify-center' : ''}
                             ${isActive 
-                              ? 'bg-primary-500/20 text-primary-400 font-medium' 
-                              : 'text-white/60 hover:bg-white/5 hover:text-white'}
+                              ? 'bg-primary-500/20 text-primary-500 font-medium' 
+                              : 'opacity-60 hover:bg-primary-500/5 hover:opacity-100'}
                           `}
                           title={isCollapsed ? item.label : ''}
                         >
@@ -170,7 +185,7 @@ export default function Sidebar() {
           </nav>
 
           {/* User section */}
-          <div className="p-4 border-t border-white/10">
+          <div className="p-4 border-t border-[var(--sidebar-border)]">
             <div className={`flex items-center gap-3 mb-4 ${isCollapsed ? 'justify-center' : ''}`}>
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center shrink-0">
                 <span className="text-white font-medium">
@@ -179,8 +194,8 @@ export default function Sidebar() {
               </div>
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium truncate">{user?.name}</p>
-                  <p className="text-white/40 text-sm truncate">{user?.email}</p>
+                  <p className="font-medium truncate">{user?.name}</p>
+                  <p className="opacity-40 text-sm truncate">{user?.email}</p>
                 </div>
               )}
             </div>
@@ -190,7 +205,7 @@ export default function Sidebar() {
                 window.location.href = '/';
               }}
               className={`
-                flex items-center gap-2 w-full px-4 py-2 rounded-xl text-white/60 hover:bg-white/5 hover:text-white transition-all
+                flex items-center gap-2 w-full px-4 py-2 rounded-xl opacity-60 hover:bg-primary-500/5 hover:opacity-100 transition-all
                 ${isCollapsed ? 'justify-center' : ''}
               `}
               title={isCollapsed ? 'Sair' : ''}

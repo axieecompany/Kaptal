@@ -39,8 +39,8 @@ const COLORS = [
 function DonutChart({ stats, total }: { stats: CategoryStat[]; total: number }) {
   if (!stats.length || total === 0) {
     return (
-      <div className="w-48 h-48 rounded-full bg-white/10 flex items-center justify-center">
-        <span className="text-white/40 text-sm">Sem dados</span>
+      <div className="w-48 h-48 rounded-full bg-current/5 flex items-center justify-center">
+        <span className="opacity-40 text-sm font-medium">Sem dados</span>
       </div>
     );
   }
@@ -81,8 +81,8 @@ function DonutChart({ stats, total }: { stats: CategoryStat[]; total: number }) 
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-sm text-white/60">Total</p>
-          <p className="text-lg font-bold text-white">{formatCurrency(total)}</p>
+          <p className="text-sm opacity-60 font-medium">Total</p>
+          <p className="text-xl font-black">{formatCurrency(total)}</p>
         </div>
       </div>
     </div>
@@ -105,7 +105,7 @@ function CategoryModal({
 }) {
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('📦');
-  const [color, setColor] = useState('#6366f1');
+  const [color, setColor] = useState('#10b981');
   const [parentId, setParentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -120,7 +120,7 @@ function CategoryModal({
     } else {
       setName('');
       setIcon('📦');
-      setColor('#6366f1');
+      setColor('#10b981');
       setParentId(null);
     }
   }, [editCategory, isOpen]);
@@ -153,13 +153,13 @@ function CategoryModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="glass-card p-6 w-full max-w-md relative z-10 animate-fade-in max-h-[90vh] overflow-y-auto">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="glass-card p-6 w-full max-w-md relative z-10 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-bold">
             {editCategory ? 'Editar Categoria' : 'Nova Categoria'}
           </h2>
-          <button onClick={onClose} className="text-white/60 hover:text-white">
+          <button onClick={onClose} className="opacity-40 hover:opacity-100 transition-opacity">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -187,8 +187,8 @@ function CategoryModal({
                   onClick={() => setIcon(i)}
                   className={`p-2 rounded-xl text-xl transition-all ${
                     icon === i 
-                      ? 'bg-primary-500/30 ring-2 ring-primary-500' 
-                      : 'bg-white/5 hover:bg-white/10'
+                      ? 'bg-primary-500/20 ring-2 ring-primary-500' 
+                      : 'bg-current/5 hover:bg-current/10'
                   }`}
                 >
                   {i}
@@ -198,7 +198,7 @@ function CategoryModal({
             <button
               type="button"
               onClick={() => setShowAllIcons(!showAllIcons)}
-              className="text-primary-400 text-sm mt-2 hover:text-primary-300"
+              className="text-primary-500 text-sm mt-2 hover:text-primary-600 font-medium"
             >
               {showAllIcons ? 'Mostrar menos' : `Ver todos (${ICONS.length})`}
             </button>
@@ -213,7 +213,7 @@ function CategoryModal({
                   type="button"
                   onClick={() => setColor(c)}
                   className={`w-full aspect-square rounded-xl transition-all ${
-                    color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-transparent' : ''
+                    color === c ? 'ring-2 ring-current ring-offset-2 ring-offset-transparent' : ''
                   }`}
                   style={{ backgroundColor: c }}
                 />
@@ -228,11 +228,11 @@ function CategoryModal({
               onChange={(e) => setParentId(e.target.value || null)}
               className="input-field"
             >
-              <option value="">Nenhuma (categoria principal)</option>
+              <option value="" className="bg-[var(--sidebar-bg)]">Nenhuma (categoria principal)</option>
               {categories
                 .filter(cat => cat.id !== editCategory?.id)
                 .map((cat) => (
-                  <option key={cat.id} value={cat.id}>
+                  <option key={cat.id} value={cat.id} className="bg-[var(--sidebar-bg)] font-sans">
                     {cat.icon} {cat.name}
                   </option>
                 ))}
@@ -240,7 +240,7 @@ function CategoryModal({
           </div>
 
           {error && (
-            <p className="text-red-400 text-sm">{error}</p>
+            <p className="text-red-500 text-sm font-medium">{error}</p>
           )}
 
           <button
@@ -283,7 +283,7 @@ function CategoryListItem({
         {hasChildren ? (
           <button 
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-5 h-5 flex items-center justify-center text-white/40"
+            className="w-5 h-5 flex items-center justify-center opacity-40 hover:opacity-100 transition-opacity"
           >
             {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
@@ -292,37 +292,37 @@ function CategoryListItem({
         )}
         
         <div 
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-          style={{ backgroundColor: `${category.color}20` }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm"
+          style={{ backgroundColor: `${category.color}15`, color: category.color }}
         >
           {category.icon}
         </div>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-white font-medium truncate">{category.name}</span>
-            <span className="text-white font-semibold">{formatCurrency(amount)}</span>
+            <span className="font-bold truncate text-sm sm:text-base">{category.name}</span>
+            <span className="font-black tabular-nums">{formatCurrency(amount)}</span>
           </div>
           {percentage > 0 && (
-            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-current/5 rounded-full overflow-hidden">
               <div 
-                className="h-full rounded-full transition-all duration-500"
+                className="h-full rounded-full transition-all duration-700 ease-out"
                 style={{ width: `${percentage}%`, backgroundColor: category.color }}
               />
             </div>
           )}
         </div>
 
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onEdit(category)}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+            className="p-2 rounded-lg bg-current/5 hover:bg-current/10 opacity-60 hover:opacity-100 transition-all"
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(category)}
-            className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400"
+            className="p-2 rounded-lg bg-current/5 hover:bg-red-500/20 opacity-60 hover:opacity-100 hover:text-red-500 transition-all"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -330,7 +330,7 @@ function CategoryListItem({
       </div>
 
       {isExpanded && hasChildren && (
-        <div className="ml-6 border-l border-white/10 pl-4">
+        <div className="ml-6 border-l-2 border-current/5 pl-4 space-y-1">
           {category.children!.map((child) => (
             <CategoryListItem
               key={child.id}
@@ -365,11 +365,11 @@ function DeleteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="glass-card p-6 w-full max-w-sm relative z-10 animate-fade-in">
-        <h2 className="text-xl font-bold text-white mb-4">Excluir Categoria</h2>
-        <p className="text-white/60 mb-6">
-          Tem certeza que deseja excluir <strong className="text-white">{category.icon} {category.name}</strong>?
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="glass-card p-8 w-full max-w-sm relative z-10 animate-in fade-in zoom-in duration-200">
+        <h2 className="text-xl font-bold mb-4">Excluir Categoria</h2>
+        <p className="opacity-60 mb-6 font-medium leading-relaxed">
+          Tem certeza que deseja excluir <span className="text-current font-bold underline">{category.icon} {category.name}</span>?
           As transações vinculadas ficarão sem categoria.
         </p>
         <div className="flex gap-3">
@@ -379,7 +379,7 @@ function DeleteModal({
           <button 
             onClick={onConfirm} 
             disabled={isLoading}
-            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 active:scale-95"
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
             Excluir
@@ -399,7 +399,7 @@ export default function CategoriesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [deleteCategory, setDeleteCategory] = useState<Category | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsLoadingState] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const loadData = async () => {
@@ -435,7 +435,7 @@ export default function CategoriesPage() {
 
   const handleDelete = async () => {
     if (!deleteCategory) return;
-    setIsDeleting(true);
+    setIsLoadingState(true);
     try {
       await categoriesApi.delete(deleteCategory.id);
       setDeleteCategory(null);
@@ -443,7 +443,7 @@ export default function CategoriesPage() {
     } catch (err) {
       console.error('Error deleting category:', err);
     } finally {
-      setIsDeleting(false);
+      setIsLoadingState(false);
     }
   };
 
@@ -468,22 +468,22 @@ export default function CategoriesPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-12">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Categorias</h1>
-          <p className="text-white/60">Gerencie suas categorias de gastos</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Categorias</h1>
+          <p className="opacity-60 text-sm sm:text-base">Gerencie suas categorias de gastos</p>
         </div>
         <button
           onClick={() => { setEditCategory(null); setIsModalOpen(true); }}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto shadow-emerald-500/10"
         >
           <Plus className="w-5 h-5" />
           Nova Categoria
@@ -491,33 +491,42 @@ export default function CategoriesPage() {
       </div>
 
       {/* Overview Card - Improved Layout */}
-      <div className="glass-card p-8">
-        <div className="flex flex-col lg:flex-row items-center gap-8 mb-8">
+      <div className="glass-card p-6 sm:p-8">
+        <div className="flex flex-col lg:flex-row items-center gap-8 mb-10">
           {/* Large Donut Chart */}
           <div className="flex flex-col items-center">
             <DonutChart stats={stats} total={total} />
-            <div className="mt-4 text-center">
-              <p className="text-white/60 text-sm">Total de Gastos</p>
-              <p className="text-4xl font-bold text-white mt-1">{formatCurrency(total)}</p>
+            <div className="mt-6 text-center">
+              <p className="opacity-60 text-sm font-medium">Total de Gastos</p>
+              <p className="text-3xl sm:text-4xl font-black mt-1 tabular-nums">{formatCurrency(total)}</p>
             </div>
           </div>
           
           {/* Stats Summary */}
-          <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 w-full">
             {stats.slice(0, 6).map((stat) => (
               <div 
                 key={stat.categoryId} 
-                className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors"
+                className="bg-current/5 border border-current/5 rounded-2xl p-4 hover:bg-current/[0.08] transition-all group"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div 
-                    className="w-3 h-3 rounded-full"
+                    className="w-3 h-3 rounded-full shadow-sm"
                     style={{ backgroundColor: stat.categoryColor }}
                   />
-                  <span className="text-white/60 text-sm truncate">{stat.categoryName}</span>
+                  <span className="opacity-60 text-sm truncate font-bold">{stat.categoryName}</span>
                 </div>
-                <p className="text-white font-semibold">{formatCurrency(stat.total)}</p>
-                <p className="text-white/40 text-xs">
+                <p className="font-black text-lg tabular-nums">{formatCurrency(stat.total)}</p>
+                <div className="mt-2 h-1 bg-current/5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full"
+                    style={{ 
+                      width: `${((stat.total / total) * 100)}%`, 
+                      backgroundColor: stat.categoryColor 
+                    }}
+                  />
+                </div>
+                <p className="opacity-40 text-[10px] sm:text-xs mt-2 font-bold uppercase tracking-wider">
                   {((stat.total / total) * 100).toFixed(1)}% do total
                 </p>
               </div>
@@ -525,20 +534,20 @@ export default function CategoriesPage() {
           </div>
           
           {/* Month Selector */}
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-row lg:flex-col items-center gap-4 bg-current/5 p-2 rounded-2xl lg:p-4 self-center lg:self-stretch justify-center">
             <button
               onClick={handlePrevMonth}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+              className="p-3 rounded-xl bg-background shadow-sm hover:bg-primary-500/10 hover:text-primary-500 transition-all active:scale-95"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-white font-medium capitalize min-w-[140px] text-center text-sm">
+            <span className="font-black capitalize min-w-[120px] text-center text-sm tracking-tight">
               {monthLabel}
             </span>
             <button
               onClick={handleNextMonth}
               disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all disabled:opacity-50"
+              className="p-3 rounded-xl bg-background shadow-sm hover:bg-primary-500/10 hover:text-primary-500 transition-all disabled:opacity-30 disabled:hover:bg-background disabled:hover:text-current active:scale-95"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -546,8 +555,11 @@ export default function CategoriesPage() {
         </div>
 
         {/* Categories List */}
-        <div className="border-t border-white/10 pt-4">
-          <h3 className="text-sm font-medium text-white/60 mb-4">SUAS CATEGORIAS</h3>
+        <div className="border-t border-current/10 pt-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xs font-black opacity-40 uppercase tracking-[0.2em]">Suas Categorias</h3>
+            <span className="text-xs font-bold opacity-40">{allCategories.length} totais</span>
+          </div>
           
           {categories.length > 0 ? (
             <div className="space-y-1">
@@ -563,11 +575,14 @@ export default function CategoriesPage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-white/40 mb-4">Nenhuma categoria cadastrada</p>
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-current/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Plus className="w-8 h-8 opacity-20" />
+              </div>
+              <p className="opacity-40 mb-6 font-medium">Nenhuma categoria cadastrada</p>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="btn-secondary"
+                className="btn-primary"
               >
                 Criar primeira categoria
               </button>

@@ -1,235 +1,818 @@
 'use client';
 
 import {
-    RefreshCw,
-    Search,
-    TrendingDown,
-    TrendingUp
+  CreateDividendData,
+  CreateHoldingData,
+  dividendsApi,
+  holdingsApi,
+  HoldingsSummary,
+  StockHolding,
+} from '@/lib/api';
+import {
+  BarChart3,
+  CircleDollarSign,
+  Edit3,
+  PieChart,
+  Plus,
+  RefreshCw,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-// Simulated stock data
-const STOCKS = [
-  { symbol: 'PETR4', name: 'Petrobras PN', price: 38.42, change: 1.23 },
-  { symbol: 'VALE3', name: 'Vale ON', price: 67.89, change: -0.54 },
-  { symbol: 'ITUB4', name: 'Itaú Unibanco PN', price: 32.15, change: 0.87 },
-  { symbol: 'BBDC4', name: 'Bradesco PN', price: 15.67, change: -0.32 },
-  { symbol: 'ABEV3', name: 'Ambev ON', price: 12.45, change: 0.15 },
-  { symbol: 'MGLU3', name: 'Magazine Luiza ON', price: 2.34, change: -5.21 },
-  { symbol: 'WEGE3', name: 'WEG ON', price: 35.78, change: 2.45 },
-  { symbol: 'RENT3', name: 'Localiza ON', price: 48.92, change: 1.67 },
-  { symbol: 'BBAS3', name: 'Banco do Brasil ON', price: 54.23, change: 0.89 },
-  { symbol: 'SUZB3', name: 'Suzano ON', price: 52.11, change: -1.23 },
-  { symbol: 'ELET3', name: 'Eletrobras ON', price: 41.56, change: 0.45 },
-  { symbol: 'LREN3', name: 'Lojas Renner ON', price: 14.23, change: -2.31 },
-];
+const DIVIDEND_TYPES = [
+  { value: 'DIVIDEND', label: 'Dividendo' },
+  { value: 'JCP', label: 'JCP' },
+  { value: 'RENDIMENTO', label: 'Rendimento' },
+  { value: 'BONUS', label: 'Bonificação' },
+  { value: 'OTHER', label: 'Outro' },
+] as const;
 
-const CURRENCIES = [
-  { symbol: 'USD', name: 'Dólar Americano', value: 5.12, change: 0.34, icon: '🇺🇸' },
-  { symbol: 'EUR', name: 'Euro', value: 5.54, change: 0.21, icon: '🇪🇺' },
-  { symbol: 'BTC', name: 'Bitcoin', value: 522345.00, change: 2.15, icon: '₿' },
-  { symbol: 'GBP', name: 'Libra Esterlina', value: 6.42, change: -0.12, icon: '🇬🇧' },
-];
+const DIVIDEND_TYPE_COLORS: Record<string, string> = {
+  DIVIDEND: '#10b981',
+  JCP: '#6366f1',
+  RENDIMENTO: '#f59e0b',
+  BONUS: '#ec4899',
+  OTHER: '#64748b',
+};
 
 function formatCurrency(value: number): string {
-  if (value >= 1000) {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      maximumFractionDigits: 0,
-    }).format(value);
-  }
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   }).format(value);
 }
 
-// Currency Carousel Component
-function CurrencyCarousel({ currencies }: { currencies: typeof CURRENCIES }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+function formatPercent(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+}
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % currencies.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [currencies.length]);
+function formatDate(date: string): string {
+  return new Date(date).toLocaleDateString('pt-BR');
+}
+
+// Simple Pie Chart Component
+function DividendPieChart({ data }: { data: Record<string, number> }) {
+  const total = Object.values(data).reduce((sum, val) => sum + val, 0);
+  if (total === 0) return null;
+
+  const entries = Object.entries(data).filter(([, val]) => val > 0);
+  let cumulativePercent = 0;
 
   return (
-    <div className="relative overflow-hidden">
-      <div 
-        className="flex transition-transform duration-500 ease-in-out"
-        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-      >
-        {currencies.map((currency) => (
-          <div 
-            key={currency.symbol}
-            className="min-w-full px-2"
-          >
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl">{currency.icon}</span>
-                  <div>
-                    <p className="text-white font-bold text-lg">{currency.name}</p>
-                    <p className="text-white/60">{currency.symbol}/BRL</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-white">{formatCurrency(currency.value)}</p>
-                  <span className={`flex items-center justify-end gap-1 ${currency.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {currency.change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                    {currency.change >= 0 ? '+' : ''}{currency.change.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+      <div className="relative w-32 h-32">
+        <svg viewBox="0 0 100 100" className="transform -rotate-90">
+          {entries.map(([type, value], index) => {
+            const percent = (value / total) * 100;
+            const dashArray = `${percent} ${100 - percent}`;
+            const dashOffset = -cumulativePercent;
+            cumulativePercent += percent;
+            
+            return (
+              <circle
+                key={type}
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                stroke={DIVIDEND_TYPE_COLORS[type] || '#64748b'}
+                strokeWidth="20"
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+                style={{ transition: 'all 0.3s ease' }}
+              />
+            );
+          })}
+        </svg>
       </div>
-      
-      {/* Dots */}
-      <div className="flex justify-center gap-2 mt-4">
-        {currencies.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-2 h-2 rounded-full transition-all ${
-              index === currentIndex ? 'bg-primary-400 w-6' : 'bg-white/20'
-            }`}
-          />
+      <div className="space-y-2">
+        {entries.map(([type, value]) => (
+          <div key={type} className="flex items-center gap-2 text-sm">
+            <div
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: DIVIDEND_TYPE_COLORS[type] }}
+            />
+            <span className="opacity-60">{DIVIDEND_TYPES.find(t => t.value === type)?.label || type}</span>
+            <span className="font-bold ml-auto">{formatCurrency(value)}</span>
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-export default function StocksPage() {
-  const [stocks, setStocks] = useState(STOCKS);
-  const [currencies, setCurrencies] = useState(CURRENCIES);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [searchTerm, setSearchTerm] = useState('');
+// Bar Chart for Monthly Dividends
+function MonthlyDividendChart({ data }: { data: Record<string, number> }) {
+  const entries = Object.entries(data)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-12);
+  
+  if (entries.length === 0) return null;
 
-  const refreshData = async () => {
-    setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setStocks(stocks.map(s => ({
-      ...s,
-      price: s.price * (1 + (Math.random() - 0.5) * 0.02),
-      change: s.change + (Math.random() - 0.5) * 0.5,
-    })));
-    
-    setCurrencies(currencies.map(c => ({
-      ...c,
-      value: c.value * (1 + (Math.random() - 0.5) * 0.01),
-      change: c.change + (Math.random() - 0.5) * 0.2,
-    })));
-    
-    setLastUpdate(new Date());
-    setIsRefreshing(false);
-  };
-
-  useEffect(() => {
-    const interval = setInterval(refreshData, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const filteredStocks = stocks.filter(stock => 
-    stock.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stock.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const maxValue = Math.max(...entries.map(([, v]) => v), 1);
 
   return (
-    <div className="space-y-6">
-      {/* Header Fixo */}
-      <div className="sticky top-0 z-10 bg-[#0a0a14]/95 backdrop-blur-xl -mx-6 lg:-mx-8 px-6 lg:px-8 py-4 border-b border-white/10">
+    <div className="space-y-4">
+      <div className="flex items-end gap-1 h-32">
+        {entries.map(([month, value]) => {
+          const height = (value / maxValue) * 100;
+          const [year, monthNum] = month.split('-');
+          const monthLabel = new Date(parseInt(year), parseInt(monthNum) - 1).toLocaleDateString('pt-BR', { month: 'short' });
+          
+          return (
+            <div key={month} className="flex-1 flex flex-col items-center gap-1">
+              <div className="w-full relative">
+                <div
+                  className="w-full bg-primary-500/80 rounded-t-sm transition-all duration-300 hover:bg-primary-500"
+                  style={{ height: `${height}%`, minHeight: value > 0 ? '4px' : '0' }}
+                />
+              </div>
+              <span className="text-[9px] opacity-40 uppercase tracking-wider">{monthLabel}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function PortfolioPage() {
+  const [holdings, setHoldings] = useState<StockHolding[]>([]);
+  const [summary, setSummary] = useState<HoldingsSummary | null>(null);
+  const [dividendData, setDividendData] = useState<{
+    byType: Record<string, number>;
+    byMonth: Record<string, number>;
+    summary: { total: number; monthlyAverage: number };
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  // Modal states
+  const [showAddHolding, setShowAddHolding] = useState(false);
+  const [showAddDividend, setShowAddDividend] = useState(false);
+  const [editingHolding, setEditingHolding] = useState<StockHolding | null>(null);
+  const [selectedHoldingForDividend, setSelectedHoldingForDividend] = useState<string>('');
+
+  // Form states
+  const [holdingForm, setHoldingForm] = useState<CreateHoldingData>({
+    symbol: '',
+    quantity: 0,
+    averagePrice: 0,
+    averageCost: 0,
+  });
+  const [dividendForm, setDividendForm] = useState<CreateDividendData>({
+    holdingId: '',
+    amount: 0,
+    type: 'DIVIDEND',
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  const fetchData = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setIsRefreshing(true);
+    try {
+      const [holdingsRes, dividendsRes] = await Promise.all([
+        holdingsApi.getAll(),
+        dividendsApi.getAll(),
+      ]);
+
+      if (holdingsRes.success) {
+        setHoldings(holdingsRes.data.holdings);
+        setSummary(holdingsRes.data.summary);
+      }
+
+      if (dividendsRes.success) {
+        setDividendData({
+          byType: dividendsRes.data.byType,
+          byMonth: dividendsRes.data.byMonth,
+          summary: dividendsRes.data.summary,
+        });
+      }
+
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('Error fetching portfolio data:', error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleAddHolding = async () => {
+    if (!holdingForm.symbol || holdingForm.quantity <= 0 || holdingForm.averagePrice <= 0) return;
+
+    try {
+      await holdingsApi.create(holdingForm);
+      setShowAddHolding(false);
+      setHoldingForm({ symbol: '', quantity: 0, averagePrice: 0, averageCost: 0 });
+      fetchData(true);
+    } catch (error) {
+      console.error('Error adding holding:', error);
+    }
+  };
+
+  const handleUpdateHolding = async () => {
+    if (!editingHolding) return;
+
+    try {
+      await holdingsApi.update(editingHolding.id, holdingForm);
+      setEditingHolding(null);
+      setHoldingForm({ symbol: '', quantity: 0, averagePrice: 0, averageCost: 0 });
+      fetchData(true);
+    } catch (error) {
+      console.error('Error updating holding:', error);
+    }
+  };
+
+  const handleDeleteHolding = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este ativo?')) return;
+
+    try {
+      await holdingsApi.delete(id);
+      fetchData(true);
+    } catch (error) {
+      console.error('Error deleting holding:', error);
+    }
+  };
+
+  const handleAddDividend = async () => {
+    if (!dividendForm.holdingId || dividendForm.amount <= 0) return;
+
+    try {
+      await dividendsApi.create(dividendForm);
+      setShowAddDividend(false);
+      setDividendForm({
+        holdingId: '',
+        amount: 0,
+        type: 'DIVIDEND',
+        date: new Date().toISOString().split('T')[0],
+      });
+      fetchData(true);
+    } catch (error) {
+      console.error('Error adding dividend:', error);
+    }
+  };
+
+  const openEditHolding = (holding: StockHolding) => {
+    setEditingHolding(holding);
+    setHoldingForm({
+      symbol: holding.symbol,
+      quantity: holding.quantity,
+      averagePrice: holding.averagePrice,
+      averageCost: holding.averageCost,
+    });
+  };
+
+  const openAddDividend = (holdingId?: string) => {
+    setSelectedHoldingForDividend(holdingId || '');
+    setDividendForm({
+      holdingId: holdingId || '',
+      amount: 0,
+      type: 'DIVIDEND',
+      date: new Date().toISOString().split('T')[0],
+    });
+    setShowAddDividend(true);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <RefreshCw className="w-8 h-8 animate-spin opacity-40" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Header */}
+      <div className="py-2">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Ações</h1>
-            <p className="text-white/60 text-sm">
-              Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+            <h1 className="text-xl sm:text-2xl font-bold">Minha Carteira</h1>
+            {lastUpdate && (
+              <p className="opacity-40 text-[10px] sm:text-xs font-bold uppercase tracking-wider mt-0.5">
+                Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => fetchData(true)}
+              disabled={isRefreshing}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
+            <button
+              onClick={() => setShowAddHolding(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Adicionar Ativo</span>
+              <span className="sm:hidden">Ativo</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      {summary && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-primary-500" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase opacity-40 font-bold tracking-wider">Investido</p>
+                <p className="text-lg font-black">{formatCurrency(summary.totalInvested)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase opacity-40 font-bold tracking-wider">Valor Atual</p>
+                <p className="text-lg font-black">{formatCurrency(summary.totalValue)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                summary.totalProfit >= 0 ? 'bg-emerald-500/10' : 'bg-red-500/10'
+              }`}>
+                {summary.totalProfit >= 0 ? (
+                  <TrendingUp className="w-5 h-5 text-emerald-500" />
+                ) : (
+                  <TrendingDown className="w-5 h-5 text-red-500" />
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] uppercase opacity-40 font-bold tracking-wider">Lucro/Prejuízo</p>
+                <p className={`text-lg font-black ${summary.totalProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {formatCurrency(summary.totalProfit)}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <CircleDollarSign className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase opacity-40 font-bold tracking-wider">Proventos/Mês</p>
+                <p className="text-lg font-black">
+                  {formatCurrency(dividendData?.summary.monthlyAverage || 0)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Holdings Table */}
+      <div className="glass-card overflow-hidden">
+        <div className="p-4 thin-border-b bg-current/[0.01] flex items-center justify-between">
+          <div>
+            <h2 className="font-black text-lg">Meus Ativos</h2>
+            <p className="opacity-40 text-xs font-bold uppercase tracking-wider">
+              {holdings.length} ativos cadastrados
             </p>
           </div>
           <button
-            onClick={refreshData}
-            disabled={isRefreshing}
-            className="btn-primary flex items-center gap-2"
+            onClick={() => openAddDividend()}
+            className="btn-secondary flex items-center gap-2 text-sm"
           >
-            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Atualizar
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Registrar Provento</span>
+            <span className="sm:hidden">Provento</span>
           </button>
         </div>
-      </div>
 
-      {/* Currency Carousel */}
-      <div>
-        <h2 className="text-sm font-medium text-white/60 mb-3">COTAÇÕES</h2>
-        <CurrencyCarousel currencies={currencies} />
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-        <input
-          type="text"
-          placeholder="Buscar por nome ou código..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="input-field pl-12"
-        />
-      </div>
-
-      {/* Stocks List */}
-      <div className="glass-card overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <h2 className="text-lg font-semibold text-white">Ações B3</h2>
-          <p className="text-white/40 text-sm">{filteredStocks.length} ações encontradas</p>
-        </div>
-        
-        <div className="divide-y divide-white/10">
-          {filteredStocks.map((stock) => (
-            <div 
-              key={stock.symbol}
-              className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+        {holdings.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 bg-current/5 rounded-full flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-8 h-8 opacity-20" />
+            </div>
+            <p className="opacity-40 font-bold mb-2">Nenhum ativo cadastrado</p>
+            <p className="opacity-30 text-sm mb-4">Comece adicionando suas ações e FIIs</p>
+            <button
+              onClick={() => setShowAddHolding(true)}
+              className="btn-primary"
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm ${
-                  stock.change >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                }`}>
-                  {stock.symbol.slice(0, 4)}
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Primeiro Ativo
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Mobile Cards */}
+            <div className="lg:hidden divide-y divide-current/5">
+              {holdings.map((holding) => (
+                <div key={holding.id} className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${
+                        holding.profit >= 0
+                          ? 'bg-emerald-500/10 text-emerald-500'
+                          : 'bg-red-500/10 text-red-500'
+                      }`}>
+                        {holding.symbol.slice(0, 4)}
+                      </div>
+                      <div>
+                        <p className="font-bold">{holding.symbol}</p>
+                        <p className="text-xs opacity-40 truncate max-w-[140px]">
+                          {holding.companyName}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openAddDividend(holding.id)}
+                        className="p-2 hover:bg-current/10 rounded-lg transition-colors"
+                      >
+                        <CircleDollarSign className="w-4 h-4 opacity-40" />
+                      </button>
+                      <button
+                        onClick={() => openEditHolding(holding)}
+                        className="p-2 hover:bg-current/10 rounded-lg transition-colors"
+                      >
+                        <Edit3 className="w-4 h-4 opacity-40" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteHolding(holding.id)}
+                        className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500/60" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="opacity-40 text-xs">Qtd</span>
+                      <p className="font-medium">{holding.quantity}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="opacity-40 text-xs">PM</span>
+                      <p className="font-medium">{formatCurrency(holding.averagePrice)}</p>
+                    </div>
+                    <div>
+                      <span className="opacity-40 text-xs">Cotação</span>
+                      <p className="font-bold">{holding.currentPrice > 0 ? formatCurrency(holding.currentPrice) : '-'}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="opacity-40 text-xs">Valor Atual</span>
+                      <p className="font-bold">{formatCurrency(holding.currentValue)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-xs opacity-40">Lucro/Prejuízo</span>
+                    <span className={`font-bold ${holding.profit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {formatCurrency(holding.profit)} ({formatPercent(holding.profitPercent)})
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase opacity-40 font-bold tracking-wider thin-border-b">
+                    <th className="p-4">Ativo</th>
+                    <th className="p-4 text-right">Qtd</th>
+                    <th className="p-4 text-right">PM</th>
+                    <th className="p-4 text-right">Cotação</th>
+                    <th className="p-4 text-right">Investido</th>
+                    <th className="p-4 text-right">Valor Atual</th>
+                    <th className="p-4 text-right">Lucro/Prejuízo</th>
+                    <th className="p-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="thin-divide">
+                  {holdings.map((holding) => (
+                    <tr
+                      key={holding.id}
+                      className="hover:bg-current/[0.02] transition-colors"
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${
+                            holding.profit >= 0
+                              ? 'bg-emerald-500/10 text-emerald-500'
+                              : 'bg-red-500/10 text-red-500'
+                          }`}>
+                            {holding.symbol.slice(0, 4)}
+                          </div>
+                          <div>
+                            <p className="font-bold">{holding.symbol}</p>
+                            <p className="text-xs opacity-40 truncate max-w-[120px]">
+                              {holding.companyName}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right font-medium tabular-nums">
+                        {holding.quantity}
+                      </td>
+                      <td className="p-4 text-right font-medium tabular-nums">
+                        {formatCurrency(holding.averagePrice)}
+                      </td>
+                      <td className="p-4 text-right font-bold tabular-nums">
+                        {holding.currentPrice > 0 ? formatCurrency(holding.currentPrice) : '-'}
+                      </td>
+                      <td className="p-4 text-right font-medium tabular-nums">
+                        {formatCurrency(holding.totalInvested)}
+                      </td>
+                      <td className="p-4 text-right font-bold tabular-nums">
+                        {formatCurrency(holding.currentValue)}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className={`font-bold tabular-nums ${
+                          holding.profit >= 0 ? 'text-emerald-500' : 'text-red-500'
+                        }`}>
+                          {formatCurrency(holding.profit)}
+                          <span className="text-xs ml-1 opacity-60">
+                            ({formatPercent(holding.profitPercent)})
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => openAddDividend(holding.id)}
+                            className="p-2 hover:bg-current/10 rounded-lg transition-colors"
+                            title="Registrar provento"
+                          >
+                            <CircleDollarSign className="w-4 h-4 opacity-40" />
+                          </button>
+                          <button
+                            onClick={() => openEditHolding(holding)}
+                            className="p-2 hover:bg-current/10 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <Edit3 className="w-4 h-4 opacity-40" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteHolding(holding.id)}
+                            className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500/60" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Dividends Charts */}
+      {dividendData && (dividendData.summary.total > 0 || Object.keys(dividendData.byMonth).length > 0) && (
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* By Type */}
+          <div className="glass-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <PieChart className="w-5 h-5 opacity-40" />
+              <h3 className="font-bold">Proventos por Tipo</h3>
+            </div>
+            <DividendPieChart data={dividendData.byType} />
+          </div>
+
+          {/* By Month */}
+          <div className="glass-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="w-5 h-5 opacity-40" />
+              <h3 className="font-bold">Proventos por Mês</h3>
+            </div>
+            <MonthlyDividendChart data={dividendData.byMonth} />
+            <div className="mt-4 pt-4 flex justify-between text-sm">
+              <span className="opacity-40">Total 12 meses</span>
+              <span className="font-bold">{formatCurrency(dividendData.summary.total)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Holding Modal */}
+      {(showAddHolding || editingHolding) && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">
+                {editingHolding ? 'Editar Ativo' : 'Adicionar Ativo'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddHolding(false);
+                  setEditingHolding(null);
+                  setHoldingForm({ symbol: '', quantity: 0, averagePrice: 0, averageCost: 0 });
+                }}
+                className="p-2 hover:bg-current/10 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase opacity-40 mb-2">
+                  Símbolo (ex: PETR4)
+                </label>
+                <input
+                  type="text"
+                  value={holdingForm.symbol}
+                  onChange={(e) => setHoldingForm({ ...holdingForm, symbol: e.target.value.toUpperCase() })}
+                  className="input-field"
+                  placeholder="PETR4"
+                  disabled={!!editingHolding}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase opacity-40 mb-2">
+                    Quantidade
+                  </label>
+                  <input
+                    type="number"
+                    value={holdingForm.quantity || ''}
+                    onChange={(e) => setHoldingForm({ ...holdingForm, quantity: parseInt(e.target.value) || 0 })}
+                    className="input-field"
+                    placeholder="100"
+                  />
                 </div>
                 <div>
-                  <p className="text-white font-medium">{stock.symbol}</p>
-                  <p className="text-white/40 text-sm">{stock.name}</p>
+                  <label className="block text-xs font-bold uppercase opacity-40 mb-2">
+                    Preço Médio
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={holdingForm.averagePrice || ''}
+                    onChange={(e) => setHoldingForm({ ...holdingForm, averagePrice: parseFloat(e.target.value) || 0 })}
+                    className="input-field"
+                    placeholder="35.50"
+                  />
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-lg font-bold text-white">{formatCurrency(stock.price)}</p>
-                <span className={`flex items-center justify-end gap-1 text-sm ${
-                  stock.change >= 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {stock.change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)}%
-                </span>
+              <div>
+                <label className="block text-xs font-bold uppercase opacity-40 mb-2">
+                  Custo Médio (opcional)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={holdingForm.averageCost || ''}
+                  onChange={(e) => setHoldingForm({ ...holdingForm, averageCost: parseFloat(e.target.value) || 0 })}
+                  className="input-field"
+                  placeholder="35.60"
+                />
+                <p className="text-xs opacity-30 mt-1">Inclui taxas de corretagem</p>
               </div>
             </div>
-          ))}
 
-          {filteredStocks.length === 0 && (
-            <div className="p-8 text-center text-white/40">
-              Nenhuma ação encontrada para "{searchTerm}"
+            <div className="flex gap-2 pt-4">
+              <button
+                onClick={() => {
+                  setShowAddHolding(false);
+                  setEditingHolding(null);
+                }}
+                className="btn-secondary flex-1"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={editingHolding ? handleUpdateHolding : handleAddHolding}
+                className="btn-primary flex-1"
+                disabled={!holdingForm.symbol || holdingForm.quantity <= 0 || holdingForm.averagePrice <= 0}
+              >
+                {editingHolding ? 'Salvar' : 'Adicionar'}
+              </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Add Dividend Modal */}
+      {showAddDividend && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">Registrar Provento</h3>
+              <button
+                onClick={() => setShowAddDividend(false)}
+                className="p-2 hover:bg-current/10 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase opacity-40 mb-2">
+                  Ativo
+                </label>
+                <select
+                  value={dividendForm.holdingId}
+                  onChange={(e) => setDividendForm({ ...dividendForm, holdingId: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="">Selecione um ativo</option>
+                  {holdings.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.symbol} - {h.companyName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase opacity-40 mb-2">
+                    Valor
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={dividendForm.amount || ''}
+                    onChange={(e) => setDividendForm({ ...dividendForm, amount: parseFloat(e.target.value) || 0 })}
+                    className="input-field"
+                    placeholder="150.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase opacity-40 mb-2">
+                    Tipo
+                  </label>
+                  <select
+                    value={dividendForm.type}
+                    onChange={(e) => setDividendForm({ ...dividendForm, type: e.target.value as any })}
+                    className="input-field"
+                  >
+                    {DIVIDEND_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase opacity-40 mb-2">
+                  Data
+                </label>
+                <input
+                  type="date"
+                  value={dividendForm.date}
+                  onChange={(e) => setDividendForm({ ...dividendForm, date: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <button
+                onClick={() => setShowAddDividend(false)}
+                className="btn-secondary flex-1"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddDividend}
+                className="btn-primary flex-1"
+                disabled={!dividendForm.holdingId || dividendForm.amount <= 0}
+              >
+                Registrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Disclaimer */}
-      <p className="text-center text-white/40 text-xs">
-        * Dados simulados para demonstração
-      </p>
+      <div className="flex flex-col items-center gap-4 pt-4">
+        <p className="text-center opacity-20 text-[10px] font-black uppercase tracking-[0.3em]">
+          * Cotações via Brapi API • Kaptal Intelligence System
+        </p>
+      </div>
     </div>
   );
 }

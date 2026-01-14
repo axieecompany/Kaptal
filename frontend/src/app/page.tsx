@@ -81,62 +81,62 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">Controle de Gastos</h3>
               <p className="text-white/60">
-                Registre e categorize todas as suas despesas. Visualize para onde vai seu dinheiro.
+                Registre e categorize despesas. Defina orçamentos por categoria e acompanhe seu consumo mensal.
               </p>
             </div>
 
-            {/* Feature 2 */}
+            {/* Feature 2 - Portfolio */}
             <div className="glass-card p-8 hover:bg-white/10 transition-all duration-300 group">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                <PieChart className="w-7 h-7 text-white" />
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <BarChart3 className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Categorias Detalhadas</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Carteira de Investimentos</h3>
               <p className="text-white/60">
-                Organize seus gastos por categorias e veja gráficos detalhados do seu consumo.
+                Cadastre suas ações e FIIs. Cotações em tempo real da B3. Calcule lucro, preço médio e valor atual.
               </p>
             </div>
 
-            {/* Feature 3 */}
+            {/* Feature 3 - Simulator */}
             <div className="glass-card p-8 hover:bg-white/10 transition-all duration-300 group">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <TrendingUp className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Investimentos</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Simulador de Juros Compostos</h3>
               <p className="text-white/60">
-                Acompanhe seus investimentos, rendimentos e veja seu patrimônio crescer.
+                Simule seus investimentos e veja quanto terá no futuro com aportes mensais e juros compostos.
               </p>
             </div>
 
-            {/* Feature 4 */}
+            {/* Feature 4 - Dividends */}
             <div className="glass-card p-8 hover:bg-white/10 transition-all duration-300 group">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                <BarChart3 className="w-7 h-7 text-white" />
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <PieChart className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Ações em Tempo Real</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Controle de Proventos</h3>
               <p className="text-white/60">
-                Integração com a bolsa para acompanhar suas ações e valores em tempo real.
+                Registre dividendos, JCP e rendimentos. Gráficos de proventos por tipo e média mensal.
               </p>
             </div>
 
-            {/* Feature 5 */}
+            {/* Feature 5 - Savings Goals */}
             <div className="glass-card p-8 hover:bg-white/10 transition-all duration-300 group">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <Shield className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Segurança Total</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Metas de Economia</h3>
               <p className="text-white/60">
-                Seus dados protegidos com criptografia de ponta. Verificação em duas etapas.
+                Crie metas de poupança, acompanhe o progresso e saiba quanto precisa guardar por mês.
               </p>
             </div>
 
-            {/* Feature 6 */}
+            {/* Feature 6 - Security */}
             <div className="glass-card p-8 hover:bg-white/10 transition-all duration-300 group">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <Zap className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Histórico Completo</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Segurança Total</h3>
               <p className="text-white/60">
-                Acesse todo o histórico de transações e acompanhe sua evolução financeira.
+                Dados criptografados, verificação por email e proteção completa das suas informações.
               </p>
             </div>
           </div>

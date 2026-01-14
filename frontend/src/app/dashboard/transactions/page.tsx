@@ -40,14 +40,12 @@ function TransactionModal({
   onClose, 
   onSave,
   categories,
-  rules,
   editTransaction
 }: { 
   isOpen: boolean; 
   onClose: () => void;
   onSave: () => void;
   categories: Category[];
-  rules: IncomeRule[];
   editTransaction?: Transaction | null;
 }) {
   const [description, setDescription] = useState('');
@@ -58,6 +56,42 @@ function TransactionModal({
   const [ruleItemId, setRuleItemId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Installment fields
+  const [isInstallment, setIsInstallment] = useState(false);
+  const [totalInstallments, setTotalInstallments] = useState('');
+  
+  // Dynamic rules based on selected date
+  const [rules, setRules] = useState<IncomeRule[]>([]);
+  const [isLoadingRules, setIsLoadingRules] = useState(false);
+
+  // Load rules when date changes
+  useEffect(() => {
+    const loadRulesForDate = async () => {
+      if (!isOpen) return;
+      
+      setIsLoadingRules(true);
+      try {
+        const selectedDate = new Date(date);
+        const month = selectedDate.getMonth() + 1;
+        const year = selectedDate.getFullYear();
+        
+        const rulesRes = await incomeRulesApi.getAll(month, year);
+        if (rulesRes.success) {
+          setRules(rulesRes.data);
+        } else {
+          setRules([]);
+        }
+      } catch (err) {
+        console.error('Error loading rules for date:', err);
+        setRules([]);
+      } finally {
+        setIsLoadingRules(false);
+      }
+    };
+    
+    loadRulesForDate();
+  }, [date, isOpen]);
 
   useEffect(() => {
     if (editTransaction) {
@@ -78,8 +112,18 @@ function TransactionModal({
       setDate(new Date().toISOString().split('T')[0]);
       setCategoryId(null);
       setRuleItemId(null);
+      setIsInstallment(false);
+      setTotalInstallments('');
     }
   }, [editTransaction, isOpen]);
+
+  // Reset category when date changes (if the selected category doesn't exist in new month)
+  const handleDateChange = (newDate: string) => {
+    setDate(newDate);
+    // Reset selections since rules will change
+    setCategoryId(null);
+    setRuleItemId(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +163,10 @@ function TransactionModal({
         categoryId: finalCategoryId,
         ruleItemId,
         incomeRuleId: finalIncomeRuleId,
+        ...(isInstallment && totalInstallments && {
+          isInstallment: true,
+          totalInstallments: parseInt(totalInstallments),
+        }),
       };
 
       if (editTransaction) {
@@ -137,15 +185,18 @@ function TransactionModal({
 
   if (!isOpen) return null;
 
+  const selectedDateObj = new Date(date);
+  const monthLabel = selectedDateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="glass-card p-6 w-full max-w-md relative z-10 animate-fade-in">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="glass-card p-6 w-full max-w-md relative z-10 animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-bold">
             {editTransaction ? 'Editar Transação' : 'Nova Transação'}
           </h2>
-          <button onClick={onClose} className="text-white/60 hover:text-white">
+          <button onClick={onClose} className="opacity-40 hover:opacity-100 transition-opacity">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -158,8 +209,8 @@ function TransactionModal({
               onClick={() => setType('EXPENSE')}
               className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${
                 type === 'EXPENSE'
-                  ? 'bg-red-500/20 text-red-400 ring-2 ring-red-500'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  ? 'bg-red-500/20 text-red-500 ring-2 ring-red-500'
+                  : 'bg-current/5 opacity-60 hover:opacity-100 hover:bg-current/10'
               }`}
             >
               <ArrowDownCircle className="w-5 h-5" />
@@ -170,8 +221,8 @@ function TransactionModal({
               onClick={() => setType('INCOME')}
               className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${
                 type === 'INCOME'
-                  ? 'bg-green-500/20 text-green-400 ring-2 ring-green-500'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  ? 'bg-emerald-500/20 text-emerald-500 ring-2 ring-emerald-500'
+                  : 'bg-current/5 opacity-60 hover:opacity-100 hover:bg-current/10'
               }`}
             >
               <ArrowUpCircle className="w-5 h-5" />
@@ -210,13 +261,17 @@ function TransactionModal({
             <input
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => handleDateChange(e.target.value)}
               className="input-field"
             />
           </div>
 
           <div>
-            <label className="input-label">Categoria</label>
+            <label className="input-label flex items-center gap-2">
+              Categoria
+              {isLoadingRules && <Loader2 className="w-3 h-3 animate-spin" />}
+              <span className="text-xs opacity-40 font-normal">({monthLabel})</span>
+            </label>
             <select
               value={
                 ruleItemId ? `item:${ruleItemId}` : 
@@ -243,14 +298,15 @@ function TransactionModal({
                 }
               }}
               className="input-field"
+              disabled={isLoadingRules}
             >
-              <option value="">Sem categoria</option>
+              <option value="" className="bg-[var(--sidebar-bg)]">Sem categoria</option>
               
               {/* Rules with subitems - each rule as its own optgroup */}
               {rules.map((rule) => (
-                <optgroup key={rule.id} label={`${rule.icon} ${rule.name}`}>
+                <optgroup key={rule.id} label={`${rule.icon} ${rule.name}`} className="bg-[var(--sidebar-bg)]">
                   {/* The rule itself as main category */}
-                  <option value={`rule:${rule.id}`}>
+                  <option value={`rule:${rule.id}`} className="bg-[var(--sidebar-bg)] font-sans">
                     {rule.icon} {rule.name} (Geral)
                   </option>
                   {/* Subitems */}
@@ -258,6 +314,7 @@ function TransactionModal({
                     <option 
                       key={item.id} 
                       value={`item:${item.id}`}
+                      className="bg-[var(--sidebar-bg)] font-sans"
                     >
                       └ {item.name}
                     </option>
@@ -265,6 +322,11 @@ function TransactionModal({
                 </optgroup>
               ))}
             </select>
+            {rules.length === 0 && !isLoadingRules && (
+              <p className="text-orange-500 text-xs mt-1 font-medium">
+                Nenhuma categoria encontrada para {monthLabel}. Configure as categorias na página de Gastos.
+              </p>
+            )}
             {ruleItemId && (() => {
               // Find the selected subitem name
               let selectedItemName = '';
@@ -276,24 +338,63 @@ function TransactionModal({
                 }
               }
               return selectedItemName ? (
-                <p className="text-primary-400 text-sm mt-1">
+                <p className="text-primary-500 text-sm mt-1 font-medium">
                   {selectedItemName}
                 </p>
               ) : null;
             })()}
           </div>
 
+          {/* Installment section - only for expenses */}
+          {type === 'EXPENSE' && !editTransaction && (
+            <div className="space-y-3 p-4 rounded-xl bg-current/5 border border-current/10">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isInstallment}
+                  onChange={(e) => {
+                    setIsInstallment(e.target.checked);
+                    if (!e.target.checked) setTotalInstallments('');
+                  }}
+                  className="w-4 h-4 rounded border-current/20 text-primary-500 focus:ring-primary-500"
+                />
+                <span className="font-medium">Compra parcelada?</span>
+              </label>
+              
+              {isInstallment && (
+                <div className="animate-in slide-in-from-top-2 duration-200">
+                  <label className="input-label">Número de parcelas</label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="48"
+                    value={totalInstallments}
+                    onChange={(e) => setTotalInstallments(e.target.value)}
+                    className="input-field"
+                    placeholder="Ex: 6"
+                    required={isInstallment}
+                  />
+                  {totalInstallments && amount && (
+                    <p className="text-primary-500 text-xs mt-2 font-medium">
+                      {totalInstallments}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(amount))} = Total {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(amount) * parseInt(totalInstallments))}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {error && (
-            <p className="text-red-400 text-sm">{error}</p>
+            <p className="text-red-500 text-sm font-medium">{error}</p>
           )}
 
           <button
             type="submit"
-            disabled={isLoading || !description.trim() || !amount}
+            disabled={isLoading || !description.trim() || !amount || (isInstallment && !totalInstallments)}
             className="btn-primary w-full flex items-center justify-center gap-2"
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-            {editTransaction ? 'Salvar Alterações' : 'Adicionar Transação'}
+            {editTransaction ? 'Salvar Alterações' : isInstallment ? `Criar ${totalInstallments || ''} Parcelas` : 'Adicionar Transação'}
           </button>
         </form>
       </div>
@@ -319,11 +420,11 @@ function DeleteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="glass-card p-6 w-full max-w-sm relative z-10 animate-fade-in">
-        <h2 className="text-xl font-bold text-white mb-4">Excluir Transação</h2>
-        <p className="text-white/60 mb-6">
-          Tem certeza que deseja excluir <strong className="text-white">"{transaction.description}"</strong>?
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="glass-card p-8 w-full max-w-sm relative z-10 animate-in fade-in zoom-in duration-200">
+        <h2 className="text-xl font-bold mb-4">Excluir Transação</h2>
+        <p className="opacity-60 mb-6 font-medium leading-relaxed">
+          Tem certeza que deseja excluir <span className="text-current font-bold underline decoration-red-500/30">"{transaction.description}"</span>?
         </p>
         <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1">
@@ -332,7 +433,7 @@ function DeleteModal({
           <button 
             onClick={onConfirm} 
             disabled={isLoading}
-            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 active:scale-95"
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
             Excluir
@@ -417,16 +518,16 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-6 sm:space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Transações</h1>
-          <p className="text-white/60 text-sm sm:text-base">Gerencie suas receitas e despesas</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Transações</h1>
+          <p className="opacity-60 text-sm sm:text-base">Gerencie suas receitas e despesas</p>
         </div>
         <button
           onClick={() => { setEditTransaction(null); setIsModalOpen(true); }}
-          className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
+          className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto shadow-emerald-500/10"
         >
           <Plus className="w-5 h-5" />
           Nova Transação
@@ -438,8 +539,8 @@ export default function TransactionsPage() {
         <div className="flex items-center gap-4 flex-wrap">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-              showFilters ? 'bg-primary-500/20 text-primary-400' : 'bg-white/5 text-white/60 hover:bg-white/10'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium ${
+              showFilters ? 'bg-primary-500/10 text-primary-500' : 'bg-current/5 opacity-60 hover:opacity-100'
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -449,24 +550,24 @@ export default function TransactionsPage() {
           <div className="flex gap-2">
             <button
               onClick={() => handleFilterChange('type', undefined)}
-              className={`px-4 py-2 rounded-xl transition-all ${
-                !filters.type ? 'bg-primary-500/20 text-primary-400' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              className={`px-4 py-2 rounded-xl transition-all font-medium ${
+                !filters.type ? 'bg-primary-500/10 text-primary-500' : 'bg-current/5 opacity-60 hover:opacity-100'
               }`}
             >
               Todas
             </button>
             <button
               onClick={() => handleFilterChange('type', 'EXPENSE')}
-              className={`px-4 py-2 rounded-xl transition-all ${
-                filters.type === 'EXPENSE' ? 'bg-red-500/20 text-red-400' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              className={`px-4 py-2 rounded-xl transition-all font-medium ${
+                filters.type === 'EXPENSE' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-current/5 opacity-60 hover:opacity-100'
               }`}
             >
               Despesas
             </button>
             <button
               onClick={() => handleFilterChange('type', 'INCOME')}
-              className={`px-4 py-2 rounded-xl transition-all ${
-                filters.type === 'INCOME' ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              className={`px-4 py-2 rounded-xl transition-all font-medium ${
+                filters.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-current/5 opacity-60 hover:opacity-100'
               }`}
             >
               Receitas
@@ -475,7 +576,7 @@ export default function TransactionsPage() {
         </div>
 
         {showFilters && (
-          <div className="mt-4 pt-4 border-t border-white/10 grid md:grid-cols-3 gap-4">
+          <div className="mt-4 pt-4 border-t border-current/10 grid md:grid-cols-3 gap-4 animate-in slide-in-from-top-2 duration-200">
             <div>
               <label className="input-label">Data Início</label>
               <input
@@ -501,9 +602,9 @@ export default function TransactionsPage() {
                 onChange={(e) => handleFilterChange('categoryId', e.target.value || undefined)}
                 className="input-field"
               >
-                <option value="">Todas</option>
+                <option value="" className="bg-[var(--sidebar-bg)]">Todas</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
+                  <option key={cat.id} value={cat.id} className="bg-[var(--sidebar-bg)] font-sans">
                     {cat.icon} {cat.name}
                   </option>
                 ))}
@@ -517,21 +618,21 @@ export default function TransactionsPage() {
       <div className="glass-card overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
           </div>
         ) : transactions.length > 0 ? (
           <>
-            <div className="divide-y divide-white/10">
+            <div className="thin-divide">
               {transactions.map((transaction) => (
                 <div 
                   key={transaction.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 hover:bg-white/5 transition-colors group gap-3"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-5 hover:bg-current/[0.02] transition-colors group gap-3"
                 >
                   <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                       transaction.type === 'INCOME' 
-                        ? 'bg-green-500/20' 
-                        : 'bg-red-500/20'
+                        ? 'bg-emerald-500/10 border border-emerald-500/20' 
+                        : 'bg-red-500/10 border border-red-500/20'
                     }`}>
                       <span className="text-lg sm:text-xl">
                         {transaction.category?.icon || 
@@ -541,8 +642,8 @@ export default function TransactionsPage() {
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-white font-medium truncate text-sm sm:text-base">{transaction.description}</p>
-                      <p className="text-white/40 text-xs sm:text-sm truncate">
+                      <p className="font-bold truncate text-sm sm:text-base">{transaction.description}</p>
+                      <p className="opacity-40 text-xs sm:text-sm truncate font-medium">
                         {transaction.category?.name || 
                          transaction.incomeRule?.name || 
                          (transaction.ruleItem ? `${transaction.ruleItem.rule?.name} → ${transaction.ruleItem.name}` : null) || 
@@ -550,9 +651,9 @@ export default function TransactionsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-13 sm:pl-0">
-                    <span className={`text-base sm:text-lg font-semibold ${
-                      transaction.type === 'INCOME' ? 'text-green-400' : 'text-red-400'
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
+                    <span className={`text-base sm:text-lg font-black tabular-nums ${
+                      transaction.type === 'INCOME' ? 'text-emerald-500' : 'text-red-500'
                     }`}>
                       {transaction.type === 'INCOME' ? '+' : '-'}
                       {formatCurrency(Number(transaction.amount))}
@@ -560,13 +661,13 @@ export default function TransactionsPage() {
                     <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleEdit(transaction)}
-                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                        className="p-2 rounded-lg bg-current/5 hover:bg-current/10 opacity-60 hover:opacity-100 transition-all"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setDeleteTransaction(transaction)}
-                        className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400"
+                        className="p-2 rounded-lg bg-current/5 hover:bg-red-500/20 opacity-60 hover:opacity-100 hover:text-red-500 transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -577,25 +678,25 @@ export default function TransactionsPage() {
             </div>
 
             {/* Pagination */}
-            <div className="p-4 border-t border-white/10 flex items-center justify-between">
-              <p className="text-white/60 text-sm">
+            <div className="p-4 thin-border-t flex items-center justify-between bg-current/[0.01]">
+              <p className="opacity-40 text-sm font-medium">
                 Mostrando {transactions.length} de {pagination.total}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page <= 1}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white/60"
+                  className="p-2 rounded-lg bg-current/5 hover:bg-current/10 disabled:opacity-20 disabled:cursor-not-allowed opacity-60"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="text-white/60 text-sm px-2">
+                <span className="opacity-60 text-sm px-2 font-bold tabular-nums">
                   {pagination.page} / {pagination.totalPages}
                 </span>
                 <button
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page >= pagination.totalPages}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white/60"
+                  className="p-2 rounded-lg bg-current/5 hover:bg-current/10 disabled:opacity-20 disabled:cursor-not-allowed opacity-60"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -603,11 +704,14 @@ export default function TransactionsPage() {
             </div>
           </>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-white/40 mb-4">Nenhuma transação encontrada</p>
+          <div className="text-center py-16">
+            <div className="w-16 h-16 bg-current/5 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Plus className="w-8 h-8 opacity-20" />
+            </div>
+            <p className="opacity-40 mb-6 font-medium">Nenhuma transação encontrada</p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="btn-secondary"
+              className="btn-primary"
             >
               Adicionar primeira transação
             </button>
@@ -621,7 +725,6 @@ export default function TransactionsPage() {
         onClose={handleCloseModal}
         onSave={loadData}
         categories={categories}
-        rules={rules}
         editTransaction={editTransaction}
       />
 

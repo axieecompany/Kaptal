@@ -192,6 +192,12 @@ export interface RuleItem {
   amount: number;
   ruleId: string;
   rule?: IncomeRule;
+  spending?: {
+    totalSpent: number;
+    remaining: number;
+    percentage: number;
+    isOverBudget: boolean;
+  };
 }
 
 export interface IncomeRule {
@@ -204,6 +210,13 @@ export interface IncomeRule {
   year: number;
   baseIncome: number;
   items: RuleItem[];
+  spending?: {
+    totalSpent: number;
+    budgetAmount: number;
+    remaining: number;
+    percentage: number;
+    isOverBudget: boolean;
+  };
 }
 
 export interface CreateIncomeRuleData {
@@ -348,6 +361,11 @@ export interface Transaction {
   ruleItem?: RuleItem | null;
   incomeRuleId?: string | null;
   incomeRule?: IncomeRule | null;
+  // Installment fields
+  isInstallment?: boolean;
+  installmentNumber?: number | null;
+  totalInstallments?: number | null;
+  installmentGroupId?: string | null;
 }
 
 export interface CreateTransactionData {
@@ -358,6 +376,9 @@ export interface CreateTransactionData {
   categoryId?: string | null;
   ruleItemId?: string | null;
   incomeRuleId?: string | null;
+  // Installment fields
+  isInstallment?: boolean;
+  totalInstallments?: number;
 }
 
 export interface TransactionFilters {
@@ -517,6 +538,119 @@ export const savingsGoalsApi = {
 
   deleteDeposit: (goalId: string, depositId: string): Promise<{ success: boolean; message: string }> =>
     fetchApi(`/savings-goals/${goalId}/deposits/${depositId}`, {
+      method: 'DELETE',
+    }),
+};
+
+// Holdings (Stocks Portfolio)
+export interface StockHolding {
+  id: string;
+  symbol: string;
+  name: string | null;
+  quantity: number;
+  averagePrice: number;
+  averageCost: number;
+  currentPrice: number;
+  totalInvested: number;
+  currentValue: number;
+  profit: number;
+  profitPercent: number;
+  companyName: string;
+  dividends: Dividend[];
+}
+
+export interface Dividend {
+  id: string;
+  amount: number;
+  type: 'DIVIDEND' | 'JCP' | 'RENDIMENTO' | 'BONUS' | 'OTHER';
+  date: string;
+  holdingId: string;
+}
+
+export interface HoldingsSummary {
+  totalInvested: number;
+  totalValue: number;
+  totalProfit: number;
+  totalProfitPercent: number;
+  holdingsCount: number;
+}
+
+export interface HoldingsResponse {
+  success: boolean;
+  data: {
+    holdings: StockHolding[];
+    summary: HoldingsSummary;
+  };
+}
+
+export interface DividendsSummary {
+  total: number;
+  monthlyAverage: number;
+  count: number;
+}
+
+export interface DividendsResponse {
+  success: boolean;
+  data: {
+    dividends: (Dividend & { holding: { symbol: string; name: string | null } })[];
+    byType: Record<string, number>;
+    byMonth: Record<string, number>;
+    summary: DividendsSummary;
+  };
+}
+
+export interface CreateHoldingData {
+  symbol: string;
+  quantity: number;
+  averagePrice: number;
+  averageCost?: number;
+  name?: string;
+}
+
+export interface CreateDividendData {
+  holdingId: string;
+  amount: number;
+  type: 'DIVIDEND' | 'JCP' | 'RENDIMENTO' | 'BONUS' | 'OTHER';
+  date?: string;
+}
+
+export const holdingsApi = {
+  getAll: (): Promise<HoldingsResponse> =>
+    fetchApi('/holdings'),
+
+  create: (data: CreateHoldingData): Promise<{ success: boolean; data: StockHolding }> =>
+    fetchApi('/holdings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<CreateHoldingData>): Promise<{ success: boolean; data: StockHolding }> =>
+    fetchApi(`/holdings/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string): Promise<{ success: boolean; message: string }> =>
+    fetchApi(`/holdings/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+export const dividendsApi = {
+  getAll: (): Promise<DividendsResponse> =>
+    fetchApi('/dividends'),
+
+  getByHolding: (holdingId: string): Promise<{ success: boolean; data: Dividend[] }> =>
+    fetchApi(`/dividends/holding/${holdingId}`),
+
+  create: (data: CreateDividendData): Promise<{ success: boolean; data: Dividend }> =>
+    fetchApi('/dividends', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string): Promise<{ success: boolean; message: string }> =>
+    fetchApi(`/dividends/${id}`, {
       method: 'DELETE',
     }),
 };

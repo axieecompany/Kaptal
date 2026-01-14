@@ -69,8 +69,8 @@ export default function RegisterPage() {
   return (
     <div className="glass-card p-8 animate-fade-in">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-white mb-2">Criar conta</h1>
-        <p className="text-white/60">Comece a controlar suas finanças hoje</p>
+        <h1 className="text-2xl font-bold mb-2">Criar conta</h1>
+        <p className="opacity-60">Comece a controlar suas finanças hoje</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -80,7 +80,7 @@ export default function RegisterPage() {
             Nome completo
           </label>
           <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
             <input
               type="text"
               id="name"
@@ -103,7 +103,7 @@ export default function RegisterPage() {
             Email
           </label>
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
             <input
               type="email"
               id="email"
@@ -126,7 +126,7 @@ export default function RegisterPage() {
             Senha
           </label>
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
             <input
               type={showPassword ? 'text' : 'password'}
               id="password"
@@ -185,7 +185,7 @@ export default function RegisterPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-500 text-sm">
             {error}
           </div>
         )}
@@ -207,7 +207,7 @@ export default function RegisterPage() {
         </button>
       </form>
 
-      <p className="text-center text-white/60 mt-6">
+      <p className="text-center opacity-60 mt-6">
         Já tem uma conta?{' '}
         <Link href="/login" className="link font-medium">
           Fazer login

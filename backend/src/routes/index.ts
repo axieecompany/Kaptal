@@ -2,7 +2,9 @@ import { Router } from 'express';
 import authRoutes from './authRoutes.js';
 import categoryBudgetRoutes from './categoryBudgetRoutes.js';
 import categoryRoutes from './categoryRoutes.js';
+import dividendRoutes from './dividendRoutes.js';
 import goalRoutes from './goalRoutes.js';
+import holdingRoutes from './holdingRoutes.js';
 import incomeRuleRoutes from './incomeRuleRoutes.js';
 import savingsGoalRoutes from './savingsGoalRoutes.js';
 import statsRoutes from './statsRoutes.js';
@@ -28,6 +30,9 @@ router.use('/stats', statsRoutes);
 router.use('/goals', goalRoutes);
 router.use('/income-rules', incomeRuleRoutes);
 router.use('/savings-goals', savingsGoalRoutes);
+router.use('/holdings', holdingRoutes);
+router.use('/dividends', dividendRoutes);
 
 export default router;
+
 

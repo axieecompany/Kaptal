@@ -3,27 +3,27 @@
 import React from 'react';
 
 import {
-  categoryBudgetsApi,
-  incomeRulesApi,
-  type BudgetsData,
-  type CreateIncomeRuleData,
-  type IncomeRule,
-  type RuleItem
+    categoryBudgetsApi,
+    incomeRulesApi,
+    type BudgetsData,
+    type CreateIncomeRuleData,
+    type IncomeRule,
+    type RuleItem
 } from '@/lib/api';
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  DollarSign,
-  Edit2,
-  Loader2,
-  Plus,
-  RotateCcw,
-  Trash2,
-  TrendingUp,
-  Wallet,
-  X
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
+    DollarSign,
+    Edit2,
+    Loader2,
+    Plus,
+    RotateCcw,
+    Trash2,
+    TrendingUp,
+    Wallet,
+    X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -78,10 +78,25 @@ export default function GoalsPage() {
     color: '#6366f1',
     icon: '💰',
   });
-  const [newSubcategory, setNewSubcategory] = useState({ name: '', amount: '' });
+  const [newSubcategory, setNewSubcategory] = useState({ name: '' });
   const [editingSubitem, setEditingSubitem] = useState<{ ruleId: string; item: RuleItem } | null>(null);
+  const [subitemError, setSubitemError] = useState('');
   const [subItemSpending, setSubItemSpending] = useState<Map<string, { totalSpent: number; isOverBudget: boolean; overAmount: number }>>(new Map());
   const [ruleSpending, setRuleSpending] = useState<Map<string, { totalSpent: number; isOverBudget: boolean; overAmount: number }>>(new Map());
+
+  // Calculate totals from rule spending for real-time updates
+  const calculatedTotals = React.useMemo(() => {
+    let totalSpent = 0;
+    const totalBudget = baseIncome;
+
+    ruleSpending.forEach((data) => {
+      totalSpent += data.totalSpent;
+    });
+
+    const percentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+
+    return { totalSpent, totalBudget, percentage };
+  }, [ruleSpending, baseIncome]);
 
   const loadData = async () => {
     try {
@@ -98,7 +113,6 @@ export default function GoalsPage() {
       }
 
       if (rulesRes.success) {
-        // Only set rules if they are for the current month (not using fallback)
         const isCurrentMonthRules = !rulesRes.usingFallback;
         setHasRulesForCurrentMonth(isCurrentMonthRules);
         
@@ -106,13 +120,39 @@ export default function GoalsPage() {
           setIncomeRules(rulesRes.data);
           setBaseIncome(rulesRes.baseIncome || 0);
           
-          // Load spending for all subitems and rules
-          await Promise.all([
-            loadSubItemSpending(rulesRes.data),
-            loadRuleSpending(rulesRes.data)
-          ]);
+          // MAP SPENDING DATA DIRECTLY FROM RESPONSE
+          const ruleMap = new Map<string, { totalSpent: number; isOverBudget: boolean; overAmount: number }>();
+          const itemMap = new Map<string, { totalSpent: number; isOverBudget: boolean; overAmount: number }>();
+
+          rulesRes.data.forEach(rule => {
+            if (rule.spending) {
+              ruleMap.set(rule.id, {
+                totalSpent: rule.spending.totalSpent,
+                isOverBudget: rule.spending.isOverBudget,
+                overAmount: rule.spending.totalSpent > rule.spending.budgetAmount 
+                  ? rule.spending.totalSpent - rule.spending.budgetAmount 
+                  : 0
+              });
+            }
+
+            if (rule.items) {
+              rule.items.forEach(item => {
+                if (item.spending) {
+                  itemMap.set(item.id, {
+                    totalSpent: item.spending.totalSpent,
+                    isOverBudget: item.spending.isOverBudget,
+                    overAmount: item.spending.totalSpent > item.amount 
+                      ? item.spending.totalSpent - item.amount 
+                      : 0
+                  });
+                }
+              });
+            }
+          });
+
+          setRuleSpending(ruleMap);
+          setSubItemSpending(itemMap);
         } else {
-          // Clear rules if using fallback - we want empty state
           setIncomeRules([]);
           setBaseIncome(0);
           setSubItemSpending(new Map());
@@ -126,69 +166,11 @@ export default function GoalsPage() {
     }
   };
 
-  const loadRuleSpending = async (rules: IncomeRule[]) => {
-    const spendingMap = new Map<string, { totalSpent: number; isOverBudget: boolean; overAmount: number }>();
-    
-    try {
-      await Promise.all(rules.map(async (rule) => {
-        try {
-          const spendingRes = await incomeRulesApi.getRuleSpending(rule.id);
-          if (spendingRes.success) {
-            spendingMap.set(rule.id, {
-              totalSpent: spendingRes.data.totalSpent,
-              isOverBudget: spendingRes.data.isOverBudget,
-              overAmount: 0 
-            });
-          }
-        } catch (e) {
-          console.error(`Error loading spending for rule ${rule.id}`, e);
-        }
-      }));
-      setRuleSpending(spendingMap);
-    } catch (err) {
-      console.error('Error loading rule spending:', err);
-    }
-  };
 
-  const loadSubItemSpending = async (rules: IncomeRule[]) => {
-    const spendingMap = new Map<string, { totalSpent: number; isOverBudget: boolean; overAmount: number }>();
-    
-    try {
-      // For each rule with items, fetch spending data
-      for (const rule of rules) {
-        if (rule.items && rule.items.length > 0) {
-          for (const item of rule.items) {
-            try {
-              const spendingRes = await incomeRulesApi.getItemSpending(rule.id, item.id);
-              if (spendingRes.success) {
-                spendingMap.set(item.id, {
-                  totalSpent: spendingRes.data.totalSpent,
-                  isOverBudget: spendingRes.data.isOverBudget,
-                  overAmount: spendingRes.data.overAmount,
-                });
-              }
-            } catch (err) {
-              console.error(`Error loading spending for item ${item.id}:`, err);
-            }
-          }
-        }
-      }
-      
-      setSubItemSpending(spendingMap);
-    } catch (err) {
-      console.error('Error loading subitem spending:', err);
-    }
-  };
 
   const createDefaultRules = async (month: number, year: number, income: number) => {
-    for (const rule of DEFAULT_RULES) {
-      await incomeRulesApi.create({
-        ...rule,
-        month,
-        year,
-        baseIncome: income,
-      });
-    }
+    // Use resetToDefaults which also handles pending installment linking
+    await incomeRulesApi.resetToDefaults(month, year, income);
   };
 
   useEffect(() => {
@@ -295,18 +277,28 @@ export default function GoalsPage() {
 
   // Add subcategory
   const handleAddSubcategory = async () => {
-    if (!selectedRuleForSubcategory || !newSubcategory.name || !newSubcategory.amount) return;
+    if (!selectedRuleForSubcategory || !newSubcategory.name.trim()) return;
+
+    // Check for duplicate name
+    const existingItem = selectedRuleForSubcategory.items.find(
+      item => item.name.toLowerCase() === newSubcategory.name.trim().toLowerCase()
+    );
+    if (existingItem) {
+      setSubitemError('Já existe um subitem com esse nome nesta categoria');
+      return;
+    }
 
     setIsSaving(true);
+    setSubitemError('');
     try {
       await incomeRulesApi.addItem(selectedRuleForSubcategory.id, {
-        name: newSubcategory.name,
-        amount: parseFloat(newSubcategory.amount),
+        name: newSubcategory.name.trim(),
+        amount: 0, // No budget, just tracking
       });
       
       setShowSubcategoryModal(false);
       setSelectedRuleForSubcategory(null);
-      setNewSubcategory({ name: '', amount: '' });
+      setNewSubcategory({ name: '' });
       await loadData();
     } catch (err) {
       console.error('Error adding subcategory:', err);
@@ -327,17 +319,31 @@ export default function GoalsPage() {
 
   // Edit subcategory
   const handleEditSubitem = async () => {
-    if (!editingSubitem || !newSubcategory.name || !newSubcategory.amount) return;
+    if (!editingSubitem || !newSubcategory.name.trim()) return;
+
+    // Check for duplicate name (excluding current item)
+    const parentRule = incomeRules.find(r => r.id === editingSubitem.ruleId);
+    if (parentRule) {
+      const existingItem = parentRule.items.find(
+        item => item.id !== editingSubitem.item.id && 
+                item.name.toLowerCase() === newSubcategory.name.trim().toLowerCase()
+      );
+      if (existingItem) {
+        setSubitemError('Já existe um subitem com esse nome nesta categoria');
+        return;
+      }
+    }
 
     setIsSaving(true);
+    setSubitemError('');
     try {
       await incomeRulesApi.updateItem(editingSubitem.ruleId, editingSubitem.item.id, {
-        name: newSubcategory.name,
-        amount: parseFloat(newSubcategory.amount),
+        name: newSubcategory.name.trim(),
+        amount: 0, // No budget tracking
       });
       
       setEditingSubitem(null);
-      setNewSubcategory({ name: '', amount: '' });
+      setNewSubcategory({ name: '' });
       await loadData();
     } catch (err) {
       console.error('Error updating subcategory:', err);
@@ -375,33 +381,33 @@ export default function GoalsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-6 sm:space-y-8 pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-white">Gastos</h1>
-        <p className="text-white/60 text-sm sm:text-base">Visualize a distribuição do seu orçamento por categoria</p>
+        <h1 className="text-xl sm:text-2xl font-bold">Gastos</h1>
+        <p className="opacity-60 text-sm sm:text-base">Visualize a distribuição do seu orçamento por categoria</p>
       </div>
 
       {/* Month Selector */}
       <div className="flex items-center justify-center gap-3 sm:gap-4">
         <button
           onClick={handlePrevMonth}
-          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+          className="p-2 rounded-xl bg-current/5 hover:bg-current/10 opacity-60 hover:opacity-100 transition-all active:scale-95"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <span className="text-white font-medium capitalize min-w-[140px] sm:min-w-[160px] text-center text-base sm:text-lg">
+        <span className="font-black capitalize min-w-[140px] sm:min-w-[180px] text-center text-base sm:text-lg tracking-tight">
           {monthLabel}
         </span>
         <button
           onClick={handleNextMonth}
-          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+          className="p-2 rounded-xl bg-current/5 hover:bg-current/10 opacity-60 hover:opacity-100 transition-all active:scale-95"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -414,14 +420,14 @@ export default function GoalsPage() {
             setTempIncome(baseIncome.toString());
             setShowIncomeModal(true);
           }}
-          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg shadow-green-500/20"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/10 active:scale-95"
         >
           <DollarSign className="w-5 h-5" />
-          Adicionar Renda
+          Configurar Renda
         </button>
         <button
           onClick={() => setShowCategoryModal(true)}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-2 shadow-emerald-500/10"
         >
           <Plus className="w-4 h-4" />
           Nova Categoria
@@ -429,7 +435,7 @@ export default function GoalsPage() {
         {hasRulesForCurrentMonth && incomeRules.length > 0 && (
           <button
             onClick={() => setShowResetModal(true)}
-            className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg shadow-orange-500/20"
+            className="bg-red-500/10 hover:bg-red-500/20 text-red-500 px-5 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 active:scale-95"
           >
             <RotateCcw className="w-4 h-4" />
             Redefinir
@@ -439,25 +445,27 @@ export default function GoalsPage() {
 
       {/* Summary Table */}
       {(budgetsData && budgetsData.budgets.length > 0) || (hasRulesForCurrentMonth && incomeRules.length > 0) ? (
-        <div className="glass-card p-6">
-          <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-primary-400" />
-            Resumo
-          </h3>
+        <div className="glass-card overflow-hidden">
+          <div className="p-6 thin-border-b bg-current/[0.01]">
+            <h3 className="text-lg font-black flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-primary-500" />
+              Resumo Operacional
+            </h3>
+          </div>
           
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[700px]">
               <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-3 px-4 text-white/60 font-medium">Categoria</th>
-                  <th className="text-right py-3 px-4 text-white/60 font-medium">Destinado</th>
-                  <th className="text-right py-3 px-4 text-white/60 font-medium">Valor Gasto</th>
-                  <th className="text-right py-3 px-4 text-white/60 font-medium">Devo Gastar</th>
-                  <th className="text-right py-3 px-4 text-white/60 font-medium">Utilizado</th>
+                <tr className="thin-border-b bg-current/[0.01]">
+                  <th className="text-left py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Categoria</th>
+                  <th className="text-right py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Destinado</th>
+                  <th className="text-right py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Valor Gasto</th>
+                  <th className="text-right py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Teto Gastar</th>
+                  <th className="text-right py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Utilizado</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="thin-divide">
                 {/* If we have budgetsData, use it. Otherwise, use incomeRules directly */}
                 {budgetsData && budgetsData.budgets.length > 0 ? (
                   budgetsData.budgets.map((item) => {
@@ -469,27 +477,29 @@ export default function GoalsPage() {
                     return (
                       <React.Fragment key={item.id}>
                         <tr 
-                          className={`border-b border-white/5 transition-colors ${hasSubitems ? 'cursor-pointer hover:bg-white/5' : ''}`}
+                          className={`hover:bg-current/[0.02] transition-colors ${hasSubitems ? 'cursor-pointer' : ''}`}
                           onClick={() => hasSubitems && toggleCategory(item.categoryName)}
                         >
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
                               {hasSubitems ? (
                                 isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-white/40" />
+                                  <ChevronUp className="w-4 h-4 opacity-40" />
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-white/40" />
+                                  <ChevronDown className="w-4 h-4 opacity-40" />
                                 )
                               ) : (
                                 <div className="w-4" /> 
                               )}
                               <span className="text-2xl">{item.categoryIcon}</span>
-                              <span className="text-white font-medium">{item.categoryName}</span>
-                              {hasSubitems && (
-                                <span className="text-white/40 text-xs">
-                                  ({matchingRule.items.length} itens)
-                                </span>
-                              )}
+                              <div className="flex flex-col">
+                                <span className="font-bold text-base">{item.categoryName}</span>
+                                {hasSubitems && (
+                                  <span className="opacity-40 text-[10px] font-bold uppercase tracking-wider">
+                                    {matchingRule.items.length} subprocessos
+                                  </span>
+                                )}
+                              </div>
                               {matchingRule && (
                                 <button
                                   onClick={(e) => {
@@ -497,7 +507,7 @@ export default function GoalsPage() {
                                     setSelectedRuleForSubcategory(matchingRule);
                                     setShowSubcategoryModal(true);
                                   }}
-                                  className="text-primary-400 hover:text-primary-300 ml-2"
+                                  className="text-primary-500 hover:text-primary-600 ml-2 p-1 hover:bg-primary-500/10 rounded-lg transition-all"
                                   title="Adicionar subcategoria"
                                 >
                                   <Plus className="w-4 h-4" />
@@ -505,7 +515,7 @@ export default function GoalsPage() {
                               )}
                             </div>
                           </td>
-                          <td className="py-4 px-4 text-right">
+                          <td className="py-4 px-6 text-right">
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -514,24 +524,24 @@ export default function GoalsPage() {
                                   setTempPercentage(matchingRule.percentage.toString());
                                 }
                               }}
-                              className="inline-flex items-center gap-1 text-primary-400 hover:text-primary-300 transition-colors group"
+                              className="inline-flex items-center gap-1.5 text-primary-500 hover:text-primary-600 transition-colors group px-2 py-1 bg-primary-500/5 rounded-lg border border-primary-500/5"
                             >
-                              <span className="font-medium">{destinedPercentage.toFixed(1)}%</span>
-                              <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <span className="font-black tabular-nums">{destinedPercentage.toFixed(1)}%</span>
+                              <Edit2 className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-all" />
                             </button>
                           </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className="text-red-400 font-medium">{formatCurrency(item.spent)}</span>
+                          <td className="py-4 px-6 text-right">
+                            <span className="text-red-500 font-black tabular-nums">{formatCurrency(item.spent)}</span>
                           </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className="text-green-400 font-medium">{formatCurrency(item.budget)}</span>
+                          <td className="py-4 px-6 text-right">
+                            <span className="text-emerald-500 font-black tabular-nums">{formatCurrency(item.budget)}</span>
                           </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className={`font-medium ${
-                              item.percentage >= 100 ? 'text-red-400' :
-                              item.percentage >= 80 ? 'text-orange-400' :
-                              item.percentage >= 50 ? 'text-yellow-400' :
-                              'text-green-400'
+                          <td className="py-4 px-6 text-right">
+                            <span className={`font-black tabular-nums ${
+                              item.percentage >= 100 ? 'text-red-500' :
+                              item.percentage >= 80 ? 'text-orange-500' :
+                              item.percentage >= 50 ? 'text-yellow-500' :
+                              'text-emerald-500'
                             }`}>
                               {item.percentage.toFixed(2)}%
                             </span>
@@ -542,50 +552,36 @@ export default function GoalsPage() {
                         {isExpanded && hasSubitems && matchingRule.items.map((subitem) => {
                           const spending = subItemSpending.get(subitem.id);
                           const spent = spending?.totalSpent || 0;
-                          const budgeted = Number(subitem.amount);
-                          const isOver = spending?.isOverBudget || false;
-                          const overAmount = spending?.overAmount || 0;
                           
                           return (
-                            <tr key={`${item.id}-${subitem.id}`} className="bg-white/5">
-                              <td className="py-3 px-4 pl-16" colSpan={3}>
-                                <div className="flex items-center gap-2 text-white/70">
-                                  <span className="text-white/40">└</span>
-                                  <span>{subitem.name}</span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingSubitem({ ruleId: matchingRule.id, item: subitem });
-                                      setNewSubcategory({ name: subitem.name, amount: String(subitem.amount) });
-                                    }}
-                                    className="p-1 rounded-lg bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 transition-colors ml-2"
-                                  >
-                                    <Edit2 className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteSubcategory(matchingRule.id, subitem.id)}
-                                    className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
+                            <tr key={`${item.id}-${subitem.id}`} className="bg-current/[0.02] animate-in slide-in-from-top-2 duration-200">
+                              <td className="py-3 px-6 pl-16" colSpan={3}>
+                                <div className="flex items-center gap-2">
+                                  <span className="opacity-20 text-xs">└</span>
+                                  <span className="font-bold text-sm opacity-80">{subitem.name}</span>
+                                  <div className="flex items-center gap-1 ml-2">
+                                    <button
+                                      onClick={() => {
+                                        setEditingSubitem({ ruleId: matchingRule.id, item: subitem });
+                                        setNewSubcategory({ name: subitem.name });
+                                      }}
+                                      className="p-1 px-1.5 rounded-lg bg-primary-500/10 hover:bg-primary-500/20 text-primary-500 transition-all"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteSubcategory(matchingRule.id, subitem.id)}
+                                      className="p-1 px-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
                                 </div>
                               </td>
-                              <td className="py-3 px-4 text-right" colSpan={2}>
-                                <div className="flex flex-col items-end gap-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-medium ${isOver ? 'text-red-400' : 'text-white/70'}`}>
-                                      {formatCurrency(spent)}
-                                    </span>
-                                    <span className="text-white/40">/</span>
-                                    <span className="text-green-400 font-medium">
-                                      {formatCurrency(budgeted)}
-                                    </span>
-                                  </div>
-                                  {isOver && (
-                                    <span className="text-red-400 text-xs">
-                                      Ultrapassou {formatCurrency(overAmount)}
-                                    </span>
-                                  )}
-                                </div>
+                              <td className="py-3 px-6 text-right" colSpan={2}>
+                                <span className="font-black tabular-nums text-xs opacity-80">
+                                  {formatCurrency(spent)} gasto
+                                </span>
                               </td>
                             </tr>
                           );
@@ -603,65 +599,67 @@ export default function GoalsPage() {
                     return (
                       <React.Fragment key={rule.id}>
                         <tr 
-                          className={`border-b border-white/5 transition-colors ${hasSubitems ? 'cursor-pointer hover:bg-white/5' : ''}`}
+                          className={`hover:bg-current/[0.02] transition-colors ${hasSubitems ? 'cursor-pointer' : ''}`}
                           onClick={() => hasSubitems && toggleCategory(rule.name)}
                         >
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
                               {hasSubitems ? (
                                 isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-white/40" />
+                                  <ChevronUp className="w-4 h-4 opacity-40" />
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-white/40" />
+                                  <ChevronDown className="w-4 h-4 opacity-40" />
                                 )
                               ) : (
                                 <div className="w-4" /> 
                               )}
                               <span className="text-2xl">{rule.icon}</span>
-                              <span className="text-white font-medium">{rule.name}</span>
-                              {hasSubitems && (
-                                <span className="text-white/40 text-xs">
-                                  ({rule.items.length} itens)
-                                </span>
-                              )}
+                              <div className="flex flex-col">
+                                <span className="font-bold text-base">{rule.name}</span>
+                                {hasSubitems && (
+                                  <span className="opacity-40 text-[10px] font-bold uppercase tracking-wider">
+                                    {rule.items.length} subprocessos
+                                  </span>
+                                )}
+                              </div>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedRuleForSubcategory(rule);
                                   setShowSubcategoryModal(true);
                                 }}
-                                className="text-primary-400 hover:text-primary-300 ml-2"
+                                className="text-primary-500 hover:text-primary-600 ml-2 p-1 hover:bg-primary-500/10 rounded-lg transition-all"
                                 title="Adicionar subcategoria"
                               >
                                 <Plus className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
-                          <td className="py-4 px-4 text-right">
+                          <td className="py-4 px-6 text-right">
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingPercentage(rule);
                                 setTempPercentage(rule.percentage.toString());
                               }}
-                              className="inline-flex items-center gap-1 text-primary-400 hover:text-primary-300 transition-colors group"
+                              className="inline-flex items-center gap-1.5 text-primary-500 hover:text-primary-600 transition-colors group px-2 py-1 bg-primary-500/5 rounded-lg border border-primary-500/5"
                             >
-                              <span className="font-medium">{rule.percentage.toFixed(1)}%</span>
-                              <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <span className="font-black tabular-nums">{rule.percentage.toFixed(1)}%</span>
+                              <Edit2 className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-all" />
                             </button>
                           </td>
-                          <td className="py-4 px-4 text-right">
+                          <td className="py-4 px-6 text-right">
                             {(() => {
                               const spending = ruleSpending.get(rule.id);
                               const spent = spending?.totalSpent || 0;
                               const isOver = spending?.isOverBudget || false;
                               return (
                                 <div className="flex flex-col items-end">
-                                  <span className={`font-medium ${isOver ? 'text-red-500' : 'text-red-400'}`}>
+                                  <span className={`font-black tabular-nums ${isOver ? 'text-red-500' : 'text-red-500'}`}>
                                     {formatCurrency(spent)}
                                   </span>
                                   {isOver && (
-                                    <span className="text-xs text-red-500 font-bold">
+                                    <span className="text-[10px] text-red-500 font-bold uppercase tabular-nums">
                                       +{formatCurrency(spent - budgetAmount)}
                                     </span>
                                   )}
@@ -669,8 +667,8 @@ export default function GoalsPage() {
                               );
                             })()}
                           </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className="text-green-400 font-medium">{formatCurrency(budgetAmount)}</span>
+                          <td className="py-4 px-6 text-right">
+                            <span className="text-emerald-500 font-black tabular-nums">{formatCurrency(budgetAmount)}</span>
                           </td>
                           <td className="py-4 px-4 text-right">
                              {(() => {
@@ -689,50 +687,36 @@ export default function GoalsPage() {
                         {isExpanded && hasSubitems && rule.items.map((subitem) => {
                           const spending = subItemSpending.get(subitem.id);
                           const spent = spending?.totalSpent || 0;
-                          const budgeted = Number(subitem.amount);
-                          const isOver = spending?.isOverBudget || false;
-                          const overAmount = spending?.overAmount || 0;
                           
                           return (
-                            <tr key={`${rule.id}-${subitem.id}`} className="bg-white/5">
-                              <td className="py-3 px-4 pl-16" colSpan={3}>
-                                <div className="flex items-center gap-2 text-white/70">
-                                  <span className="text-white/40">└</span>
-                                  <span>{subitem.name}</span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingSubitem({ ruleId: rule.id, item: subitem });
-                                      setNewSubcategory({ name: subitem.name, amount: String(subitem.amount) });
-                                    }}
-                                    className="p-1 rounded-lg bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 transition-colors ml-2"
-                                  >
-                                    <Edit2 className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteSubcategory(rule.id, subitem.id)}
-                                    className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
+                            <tr key={`${rule.id}-${subitem.id}`} className="bg-current/[0.02] animate-in slide-in-from-top-2 duration-200">
+                              <td className="py-3 px-6 pl-16" colSpan={3}>
+                                <div className="flex items-center gap-2">
+                                  <span className="opacity-20 text-xs">└</span>
+                                  <span className="font-bold text-sm opacity-80">{subitem.name}</span>
+                                  <div className="flex items-center gap-1 ml-2">
+                                    <button
+                                      onClick={() => {
+                                        setEditingSubitem({ ruleId: rule.id, item: subitem });
+                                        setNewSubcategory({ name: subitem.name });
+                                      }}
+                                      className="p-1 px-1.5 rounded-lg bg-primary-500/10 hover:bg-primary-500/20 text-primary-500 transition-all"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteSubcategory(rule.id, subitem.id)}
+                                      className="p-1 px-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
                                 </div>
                               </td>
-                              <td className="py-3 px-4 text-right" colSpan={2}>
-                                <div className="flex flex-col items-end gap-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-medium ${isOver ? 'text-red-400' : 'text-white/70'}`}>
-                                      {formatCurrency(spent)}
-                                    </span>
-                                    <span className="text-white/40">/</span>
-                                    <span className="text-green-400 font-medium">
-                                      {formatCurrency(budgeted)}
-                                    </span>
-                                  </div>
-                                  {isOver && (
-                                    <span className="text-red-400 text-xs">
-                                      Ultrapassou {formatCurrency(overAmount)}
-                                    </span>
-                                  )}
-                                </div>
+                              <td className="py-3 px-6 text-right" colSpan={2}>
+                                <span className="font-black tabular-nums text-xs opacity-80">
+                                  {formatCurrency(spent)} gasto
+                                </span>
                               </td>
                             </tr>
                           );
@@ -746,46 +730,46 @@ export default function GoalsPage() {
           </div>
 
           {/* Totals - ORIGINAL LAYOUT */}
-          <div className="mt-8 pt-8 border-t border-white/10">
+          <div className="p-8 thin-border-t bg-current/[0.01]">
             <div className="grid md:grid-cols-3 gap-6">
               {/* Total Gasto Card */}
-              <div className="bg-gradient-to-br from-red-500/20 to-red-600/10 rounded-2xl p-6 border border-red-500/20">
+              <div className="bg-red-500/5 rounded-2xl p-6 border border-red-500/10 group hover:bg-red-500/10 transition-all">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-red-400" />
+                  <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-red-500" />
                   </div>
-                  <span className="text-white/60 text-sm font-medium">Total Gastos</span>
+                  <span className="opacity-60 text-xs font-black uppercase tracking-widest">Total Gastos</span>
                 </div>
-                <p className="text-red-400 text-3xl font-bold">{formatCurrency(budgetsData?.totals?.totalSpent || 0)}</p>
-                <p className="text-white/40 text-sm mt-2">Valor gasto no mês</p>
+                <p className="text-red-500 text-3xl font-black tabular-nums">{formatCurrency(budgetsData?.totals?.totalSpent || calculatedTotals.totalSpent)}</p>
+                <p className="opacity-40 text-xs font-bold uppercase tracking-wider mt-2">Fluxo de saída acumulado</p>
               </div>
 
               {/* Total Orçamento Card */}
-              <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-2xl p-6 border border-green-500/20">
+              <div className="bg-emerald-500/5 rounded-2xl p-6 border border-emerald-500/10 group hover:bg-emerald-500/10 transition-all">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                    <Wallet className="w-6 h-6 text-green-400" />
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                    <Wallet className="w-6 h-6 text-emerald-500" />
                   </div>
-                  <span className="text-white/60 text-sm font-medium">Total a Gastar</span>
+                  <span className="opacity-60 text-xs font-black uppercase tracking-widest">Teto Planejado</span>
                 </div>
-                <p className="text-green-400 text-3xl font-bold">{formatCurrency(budgetsData?.totals?.totalBudget || baseIncome)}</p>
-                <p className="text-white/40 text-sm mt-2">Orçamento definido</p>
+                <p className="text-emerald-500 text-3xl font-black tabular-nums">{formatCurrency(budgetsData?.totals?.totalBudget || calculatedTotals.totalBudget)}</p>
+                <p className="opacity-40 text-xs font-bold uppercase tracking-wider mt-2">Limite operacional definido</p>
               </div>
 
               {/* Percentage Card with Circle */}
-              <div className="bg-gradient-to-br from-primary-500/20 to-primary-600/10 rounded-2xl p-6 border border-primary-500/20">
+              <div className="bg-primary-500/5 rounded-2xl p-6 border border-primary-500/5 group hover:bg-primary-500/10 transition-all">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-white/60 text-sm font-medium block mb-4">Utilizado</span>
-                    <p className={`text-3xl font-bold ${
-                      (budgetsData?.totals?.percentage || 0) >= 100 ? 'text-red-400' :
-                      (budgetsData?.totals?.percentage || 0) >= 80 ? 'text-orange-400' :
-                      (budgetsData?.totals?.percentage || 0) >= 50 ? 'text-yellow-400' :
-                      'text-green-400'
+                    <span className="opacity-60 text-xs font-black uppercase tracking-widest block mb-4">Eficiência</span>
+                    <p className={`text-3xl font-black tabular-nums ${
+                      (budgetsData?.totals?.percentage || calculatedTotals.percentage) >= 100 ? 'text-red-500' :
+                      (budgetsData?.totals?.percentage || calculatedTotals.percentage) >= 80 ? 'text-orange-500' :
+                      (budgetsData?.totals?.percentage || calculatedTotals.percentage) >= 50 ? 'text-yellow-500' :
+                      'text-emerald-500'
                     }`}>
-                      {(budgetsData?.totals?.percentage || 0).toFixed(1)}%
+                      {(budgetsData?.totals?.percentage || calculatedTotals.percentage).toFixed(1)}%
                     </p>
-                    <p className="text-white/40 text-sm mt-2">do orçamento total</p>
+                    <p className="opacity-40 text-xs font-bold uppercase tracking-wider mt-2">Capacidade utilizada</p>
                   </div>
                   {/* Progress Circle */}
                   <div className="relative w-24 h-24">
@@ -795,29 +779,30 @@ export default function GoalsPage() {
                         cy="50"
                         r="42"
                         fill="none"
-                        stroke="rgba(255,255,255,0.1)"
+                        stroke="currentColor"
                         strokeWidth="12"
+                        className="opacity-5"
                       />
                       <circle
                         cx="50"
                         cy="50"
                         r="42"
                         fill="none"
-                        stroke={
-                          (budgetsData?.totals?.percentage || 0) >= 100 ? '#ef4444' :
-                          (budgetsData?.totals?.percentage || 0) >= 80 ? '#f97316' :
-                          (budgetsData?.totals?.percentage || 0) >= 50 ? '#eab308' :
-                          '#22c55e'
-                        }
+                        stroke="currentColor"
                         strokeWidth="12"
-                        strokeDasharray={`${Math.min(budgetsData?.totals?.percentage || 0, 100) * 2.64} 264`}
+                        strokeDasharray={`${Math.min(budgetsData?.totals?.percentage || calculatedTotals.percentage, 100) * 2.64} 264`}
                         strokeLinecap="round"
-                        className="transition-all duration-500"
+                        className={`transition-all duration-700 ease-out ${
+                          (budgetsData?.totals?.percentage || calculatedTotals.percentage) >= 100 ? 'text-red-500' :
+                          (budgetsData?.totals?.percentage || calculatedTotals.percentage) >= 80 ? 'text-orange-500' :
+                          (budgetsData?.totals?.percentage || calculatedTotals.percentage) >= 50 ? 'text-yellow-500' :
+                          'text-emerald-500'
+                        }`}
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">
-                        {Math.round(budgetsData?.totals?.percentage || 0)}%
+                      <span className="font-black text-xs tabular-nums tracking-tighter">
+                        {Math.round(budgetsData?.totals?.percentage || calculatedTotals.percentage)}%
                       </span>
                     </div>
                   </div>
@@ -827,20 +812,20 @@ export default function GoalsPage() {
           </div>
         </div>
       ) : (
-        <div className="glass-card p-12 text-center">
-          <div className="w-20 h-20 rounded-full bg-primary-500/20 flex items-center justify-center mx-auto mb-6">
-            <Wallet className="w-10 h-10 text-primary-400" />
+        <div className="glass-card p-12 sm:p-20 text-center">
+          <div className="w-24 h-24 rounded-full bg-current/5 flex items-center justify-center mx-auto mb-8">
+            <Wallet className="w-12 h-12 opacity-20" />
           </div>
-          <h2 className="text-xl font-bold text-white mb-4">Nenhum orçamento definido</h2>
-          <p className="text-white/60 mb-6">
-            Adicione sua renda para criar os orçamentos.
+          <h2 className="text-xl sm:text-2xl font-black mb-4">Pipeline Financeiro Vazio</h2>
+          <p className="opacity-60 mb-10 text-sm sm:text-base max-w-md mx-auto font-medium">
+            Configure seu fluxo de entrada para gerar as estratégias de alocação de capital.
           </p>
           <button
             onClick={() => setShowIncomeModal(true)}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 mx-auto"
+            className="btn-primary flex items-center gap-2 mx-auto shadow-emerald-500/20"
           >
             <DollarSign className="w-5 h-5" />
-            Adicionar Renda
+            Configurar Fluxo de Caixa
           </button>
         </div>
       )}
@@ -850,9 +835,9 @@ export default function GoalsPage() {
         <div className="glass-card p-6">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
             <div className="w-full lg:w-1/3 flex flex-col items-center">
-              <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2 self-start">
-                📊 Distribuição de Gastos
-              </h3>
+                <h3 className="text-xl font-black tracking-tight mb-6 flex items-center gap-2 self-start">
+                  📊 Distribuição de Gastos
+                </h3>
               
               <div className="relative flex-shrink-0">
                 <svg width="220" height="220" viewBox="0 0 220 220" className="transform -rotate-90">
@@ -870,7 +855,6 @@ export default function GoalsPage() {
                     return incomeRules.map((rule) => {
                       const spending = ruleSpending.get(rule.id);
                       const spent = spending?.totalSpent || 0;
-                      const budget = (baseIncome * rule.percentage) / 100;
                       
                       let displayPercentage = 0;
                       if (showPlanned) {
@@ -897,21 +881,20 @@ export default function GoalsPage() {
                           strokeDasharray={`${strokeDasharray} ${circumference}`}
                           strokeDashoffset={strokeDashoffset}
                           className="transition-all duration-300 hover:opacity-80"
-                          style={{ filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.2))' }}
                         />
                       );
                     });
                   })()}
-                  <circle cx="110" cy="110" r="48" fill="#0f0f1a" className="filter drop-shadow-lg" />
+                  <circle cx="110" cy="110" r="48" fill="currentColor" className="opacity-5" />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-lg font-bold text-white">
+                  <span className="text-lg font-bold">
                     {(() => {
                       const totalSpent = Array.from(ruleSpending.values()).reduce((acc, curr) => acc + curr.totalSpent, 0);
                       return totalSpent > 0 ? formatCurrency(totalSpent) : "100%";
                     })()}
                   </span>
-                  <span className="text-white/60 text-[10px] uppercase tracking-wider">
+                  <span className="opacity-60 text-[10px] uppercase tracking-wider">
                     {Array.from(ruleSpending.values()).reduce((acc, curr) => acc + curr.totalSpent, 0) > 0 ? "Total Gasto" : "Planejado"}
                   </span>
                 </div>
@@ -933,32 +916,32 @@ export default function GoalsPage() {
                   .map((item) => (
                     <div 
                       key={item.id}
-                      className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all group"
+                      className="p-4 rounded-2xl bg-current/5 border border-current/[0.06] flex items-center gap-4 hover:bg-current/10 transition-all group"
                     >
                       <div className="text-2xl">{item.icon}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-1">
-                          <p className="text-white font-semibold truncate">{item.name}</p>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white/10 text-white/60">
+                          <p className="font-semibold truncate">{item.name}</p>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-current/10 opacity-60">
                             {item.percentage.toFixed(1)}%
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2">
                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                             <span className="text-white/40">Gasto:</span>
-                             <span className={item.spent > 0 ? 'text-red-400 font-medium' : 'text-white/20'}>
+                             <span className="opacity-40">Gasto:</span>
+                             <span className={item.spent > 0 ? 'text-red-500 font-medium' : 'opacity-20'}>
                                {formatCurrency(item.spent)}
                              </span>
                           </div>
                           {item.spent > 0 && (
-                             <span className="text-[10px] text-white/30 italic">
+                             <span className="text-[10px] opacity-30 italic">
                                v. planejado {(item.percentage).toFixed(0)}%
                              </span>
                           )}
                         </div>
                         {/* Progress Bar Mini */}
-                        <div className="mt-2 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="mt-2 h-1 w-full bg-current/5 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-primary-500 transition-all duration-500" 
                             style={{ 
@@ -981,41 +964,44 @@ export default function GoalsPage() {
       {/* Edit Income Modal */}
       {showIncomeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowIncomeModal(false)} />
-          <div className="glass-card p-6 w-full max-w-md relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Renda Base Mensal</h2>
-              <button onClick={() => setShowIncomeModal(false)} className="text-white/60 hover:text-white">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowIncomeModal(false)} />
+          <div className="glass-card p-8 w-full max-w-md relative z-10 border-current/[0.06] shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl font-black tracking-tight">Fluxo de Caixa Base</h2>
+                <p className="opacity-40 text-[10px] font-bold uppercase tracking-widest mt-1">Configuração de aporte mensal</p>
+              </div>
+              <button onClick={() => setShowIncomeModal(false)} className="p-2 hover:bg-current/5 rounded-xl opacity-40 hover:opacity-100 transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <label className="text-white/60 text-sm mb-2 block">Valor da Renda</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">R$</span>
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Montante da Renda</label>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 font-black">R$</span>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={tempIncome}
                     onChange={(e) => setTempIncome(e.target.value)}
-                    className="input-field w-full pl-12"
-                    placeholder="5000"
+                    className="input-field w-full pl-12 font-black text-lg h-14"
+                    placeholder="0,00"
                     autoFocus
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleSaveIncome}
                   disabled={isSaving}
-                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                  className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 shadow-emerald-500/10"
                 >
-                  {isSaving && <Loader2 className="w-5 h-5 animate-spin" />}
-                  Salvar
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <DollarSign className="w-5 h-5" />}
+                  Confirmar Aporte
                 </button>
-                <button onClick={() => setShowIncomeModal(false)} className="btn-secondary flex-1">
+                <button onClick={() => setShowIncomeModal(false)} className="btn-secondary h-12 px-6">
                   Cancelar
                 </button>
               </div>
@@ -1027,53 +1013,67 @@ export default function GoalsPage() {
       {/* Edit Percentage Modal */}
       {editingPercentage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => { setEditingPercentage(null); setErrorMessage(''); }} />
-          <div className="glass-card p-6 w-full max-w-md relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Editar Porcentagem</h2>
-              <button onClick={() => { setEditingPercentage(null); setErrorMessage(''); }} className="text-white/60 hover:text-white">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => { setEditingPercentage(null); setErrorMessage(''); }} />
+          <div className="glass-card p-8 w-full max-w-md relative z-10 border-current/[0.06] shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl font-black tracking-tight">Alocação de Recurso</h2>
+                <p className="opacity-40 text-[10px] font-bold uppercase tracking-widest mt-1">Definição de teto operacional</p>
+              </div>
+              <button onClick={() => { setEditingPercentage(null); setErrorMessage(''); }} className="p-2 hover:bg-current/5 rounded-xl opacity-40 hover:opacity-100 transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                <span className="text-2xl">{editingPercentage.icon}</span>
-                <span className="text-white font-medium">{editingPercentage.name}</span>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 p-4 bg-current/[0.03] rounded-2xl border border-current/[0.03]">
+                <div className="w-12 h-12 rounded-xl bg-current/5 flex items-center justify-center text-2xl shadow-inner">
+                  {editingPercentage.icon}
+                </div>
+                <div>
+                  <span className="font-black text-base block">{editingPercentage.name}</span>
+                  <span className="opacity-40 text-[10px] font-black uppercase tracking-widest">Categoria Selecionada</span>
+                </div>
               </div>
+
               <div>
-                <label className="text-white/60 text-sm mb-2 block">Porcentagem (%)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={tempPercentage}
-                  onChange={(e) => { setTempPercentage(e.target.value); setErrorMessage(''); }}
-                  className="input-field w-full"
-                  autoFocus
-                />
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Porcentagem do Orçamento</label>
+                <div className="relative group">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={tempPercentage}
+                    onChange={(e) => { setTempPercentage(e.target.value); setErrorMessage(''); }}
+                    className="input-field w-full pr-12 font-black text-lg h-14"
+                    placeholder="0.0"
+                    autoFocus
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-primary-500 font-black">%</span>
+                </div>
                 {tempPercentage && parseFloat(tempPercentage) > 0 && (
-                  <p className="text-green-400 text-sm mt-2">
-                    = {formatCurrency(getAmountFromPercentage(parseFloat(tempPercentage)))}
+                  <p className="text-emerald-500 text-[10px] font-black uppercase tracking-wider mt-2 flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" /> Valor Resultante: {formatCurrency(getAmountFromPercentage(parseFloat(tempPercentage)))}
+                  </p>
+                )}
+                
+                {errorMessage && (
+                  <p className="text-red-500 text-[10px] font-black uppercase tracking-wider mt-2 flex items-center gap-1">
+                    <X className="w-3 h-3" /> {errorMessage}
                   </p>
                 )}
               </div>
-              {/* Error Message */}
-              {errorMessage && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-                  <p className="text-red-400 text-sm">{errorMessage}</p>
-                </div>
-              )}
-              <div className="flex gap-2">
+
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleSavePercentage}
                   disabled={isSaving}
-                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                  className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 shadow-emerald-500/10"
                 >
-                  {isSaving && <Loader2 className="w-5 h-5 animate-spin" />}
-                  Salvar
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <TrendingUp className="w-5 h-5" />}
+                  Atualizar Teto
                 </button>
-                <button onClick={() => { setEditingPercentage(null); setErrorMessage(''); }} className="btn-secondary flex-1">
+                <button onClick={() => { setEditingPercentage(null); setErrorMessage(''); }} className="btn-secondary h-12 px-6">
                   Cancelar
                 </button>
               </div>
@@ -1085,24 +1085,29 @@ export default function GoalsPage() {
       {/* Add Category Modal */}
       {showCategoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => { setShowCategoryModal(false); setErrorMessage(''); }} />
-          <div className="glass-card p-6 w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Nova Categoria</h2>
-              <button onClick={() => { setShowCategoryModal(false); setErrorMessage(''); }} className="text-white/60 hover:text-white">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => { setShowCategoryModal(false); setErrorMessage(''); }} />
+          <div className="glass-card p-8 w-full max-w-md relative z-10 border-current/[0.06] shadow-2xl animate-in fade-in zoom-in duration-200 overflow-y-auto max-h-[90vh]">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl font-black tracking-tight">Nova Unidade Estratégica</h2>
+                <p className="opacity-40 text-[10px] font-bold uppercase tracking-widest mt-1">Criação de centro de custo</p>
+              </div>
+              <button onClick={() => { setShowCategoryModal(false); setErrorMessage(''); }} className="p-2 hover:bg-current/5 rounded-xl opacity-40 hover:opacity-100 transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <label className="text-white/60 text-sm mb-2 block">Ícone</label>
-                <div className="grid grid-cols-5 gap-2 p-3 bg-white/5 rounded-xl">
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">Identificador Visual (Ícone)</label>
+                <div className="grid grid-cols-5 gap-2 p-3 bg-current/[0.03] rounded-2xl border border-current/[0.03]">
                   {AVAILABLE_ICONS.map((icon) => (
                     <button
                       key={icon}
                       onClick={() => setNewCategory({ ...newCategory, icon })}
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
-                        newCategory.icon === icon ? 'bg-primary-500/30 ring-2 ring-primary-400' : 'bg-white/5 hover:bg-white/10'
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all ${
+                        newCategory.icon === icon 
+                          ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20 scale-110' 
+                          : 'bg-current/5 hover:bg-current/10 opacity-60 hover:opacity-100'
                       }`}
                     >
                       {icon}
@@ -1110,63 +1115,74 @@ export default function GoalsPage() {
                   ))}
                 </div>
               </div>
+              
               <div>
-                <label className="text-white/60 text-sm mb-2 block">Nome</label>
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Denominação</label>
                 <input
                   type="text"
                   value={newCategory.name}
                   onChange={(e) => { setNewCategory({ ...newCategory, name: e.target.value }); setErrorMessage(''); }}
-                  className="input-field w-full"
+                  className="input-field w-full font-bold h-12"
                   placeholder="Ex: Investimentos"
                 />
               </div>
+
               <div>
-                <label className="text-white/60 text-sm mb-2 block">Porcentagem (%)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={newCategory.percentage || ''}
-                  onChange={(e) => { setNewCategory({ ...newCategory, percentage: parseFloat(e.target.value) || 0 }); setErrorMessage(''); }}
-                  className="input-field w-full"
-                  placeholder="10"
-                />
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Participação no Orçamento (%)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={newCategory.percentage || ''}
+                    onChange={(e) => { setNewCategory({ ...newCategory, percentage: parseFloat(e.target.value) || 0 }); setErrorMessage(''); }}
+                    className="input-field w-full pr-12 font-black h-12"
+                    placeholder="0.0"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-primary-500 font-black">%</span>
+                </div>
                 {newCategory.percentage > 0 && (
-                  <p className="text-green-400 text-sm mt-2">
-                    = {formatCurrency(getAmountFromPercentage(newCategory.percentage))}
+                  <p className="text-emerald-500 text-[10px] font-black uppercase tracking-wider mt-2 flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" /> Valor Resultante: {formatCurrency(getAmountFromPercentage(newCategory.percentage))}
                   </p>
                 )}
               </div>
+
               <div>
-                <label className="text-white/60 text-sm mb-2 block">Cor</label>
-                <div className="flex gap-2">
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">Identidade Cromática</label>
+                <div className="flex flex-wrap gap-2 p-3 bg-current/[0.03] rounded-2xl border border-current/[0.03]">
                   {['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#6366f1'].map((color) => (
                     <button
                       key={color}
                       onClick={() => setNewCategory({ ...newCategory, color })}
-                      className={`w-8 h-8 rounded-lg ${newCategory.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0f0f1a]' : ''}`}
+                      className={`w-8 h-8 rounded-full transition-all hover:scale-110 ${
+                        newCategory.color === color 
+                          ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-background scale-110' 
+                          : 'opacity-60 hover:opacity-100'
+                      }`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
                 </div>
               </div>
-              {/* Error Message */}
+
               {errorMessage && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-                  <p className="text-red-400 text-sm">{errorMessage}</p>
-                </div>
+                <p className="text-red-500 text-[10px] font-black uppercase tracking-wider mt-2 flex items-center gap-1">
+                  <X className="w-3 h-3" /> {errorMessage}
+                </p>
               )}
-              <div className="flex gap-2 pt-2">
+
+              <div className="flex gap-3 pt-4">
                 <button
                   onClick={handleAddCategory}
                   disabled={isSaving || !newCategory.name}
-                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                  className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 shadow-emerald-500/10"
                 >
-                  {isSaving && <Loader2 className="w-5 h-5 animate-spin" />}
-                  Criar
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                  Estabelecer Categoria
                 </button>
-                <button onClick={() => { setShowCategoryModal(false); setErrorMessage(''); }} className="btn-secondary flex-1">
+                <button onClick={() => { setShowCategoryModal(false); setErrorMessage(''); }} className="btn-secondary h-12 px-6">
                   Cancelar
                 </button>
               </div>
@@ -1178,52 +1194,56 @@ export default function GoalsPage() {
       {/* Add Subcategory Modal */}
       {showSubcategoryModal && selectedRuleForSubcategory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowSubcategoryModal(false)} />
-          <div className="glass-card p-6 w-full max-w-md relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Nova Subcategoria</h2>
-              <button onClick={() => setShowSubcategoryModal(false)} className="text-white/60 hover:text-white">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => { setShowSubcategoryModal(false); setSubitemError(''); }} />
+          <div className="glass-card p-8 w-full max-w-md relative z-10 border-current/[0.06] shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl font-black tracking-tight">Novo Subitem</h2>
+                <p className="opacity-40 text-[10px] font-bold uppercase tracking-widest mt-1">Detalhamento de gastos</p>
+              </div>
+              <button onClick={() => { setShowSubcategoryModal(false); setSubitemError(''); }} className="p-2 hover:bg-current/5 rounded-xl opacity-40 hover:opacity-100 transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                <span className="text-2xl">{selectedRuleForSubcategory.icon}</span>
-                <span className="text-white font-medium">{selectedRuleForSubcategory.name}</span>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 p-4 bg-current/[0.03] rounded-2xl border border-current/[0.03]">
+                <div className="w-12 h-12 rounded-xl bg-current/5 flex items-center justify-center text-2xl shadow-inner">
+                  {selectedRuleForSubcategory.icon}
+                </div>
+                <div>
+                  <span className="font-black text-base block">{selectedRuleForSubcategory.name}</span>
+                  <span className="opacity-40 text-[10px] font-black uppercase tracking-widest">Categoria Principal</span>
+                </div>
               </div>
+
               <div>
-                <label className="text-white/60 text-sm mb-2 block">Nome do Item</label>
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Nome do Item</label>
                 <input
                   type="text"
                   value={newSubcategory.name}
-                  onChange={(e) => setNewSubcategory({ ...newSubcategory, name: e.target.value })}
-                  className="input-field w-full"
-                  placeholder="Ex: Água"
+                  onChange={(e) => { setNewSubcategory({ name: e.target.value }); setSubitemError(''); }}
+                  className="input-field w-full font-bold h-12"
+                  placeholder="Ex: Aluguel, Supermercado..."
                   autoFocus
                 />
               </div>
-              <div>
-                <label className="text-white/60 text-sm mb-2 block">Valor (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newSubcategory.amount}
-                  onChange={(e) => setNewSubcategory({ ...newSubcategory, amount: e.target.value })}
-                  className="input-field w-full"
-                  placeholder="100"
-                />
-              </div>
-              <div className="flex gap-2">
+
+              {subitemError && (
+                <p className="text-red-500 text-xs font-bold flex items-center gap-1">
+                  <X className="w-3 h-3" /> {subitemError}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleAddSubcategory}
-                  disabled={isSaving || !newSubcategory.name || !newSubcategory.amount}
-                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                  disabled={isSaving || !newSubcategory.name.trim()}
+                  className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 shadow-emerald-500/10"
                 >
-                  {isSaving && <Loader2 className="w-5 h-5 animate-spin" />}
-                  Adicionar
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                  Vincular Item
                 </button>
-                <button onClick={() => setShowSubcategoryModal(false)} className="btn-secondary flex-1">
+                <button onClick={() => { setShowSubcategoryModal(false); setSubitemError(''); }} className="btn-secondary h-12 px-6">
                   Cancelar
                 </button>
               </div>
@@ -1235,48 +1255,46 @@ export default function GoalsPage() {
       {/* Edit Subcategory Modal */}
       {editingSubitem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => { setEditingSubitem(null); setNewSubcategory({ name: '', amount: '' }); }} />
-          <div className="glass-card p-6 w-full max-w-md relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Editar Subitem</h2>
-              <button onClick={() => { setEditingSubitem(null); setNewSubcategory({ name: '', amount: '' }); }} className="text-white/60 hover:text-white">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => { setEditingSubitem(null); setNewSubcategory({ name: '' }); setSubitemError(''); }} />
+          <div className="glass-card p-8 w-full max-w-md relative z-10 border-current/[0.06] shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl font-black tracking-tight">Editar Subitem</h2>
+                <p className="opacity-40 text-[10px] font-bold uppercase tracking-widest mt-1">Ajuste de detalhamento</p>
+              </div>
+              <button onClick={() => { setEditingSubitem(null); setNewSubcategory({ name: '' }); setSubitemError(''); }} className="p-2 hover:bg-current/5 rounded-xl opacity-40 hover:opacity-100 transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <label className="text-white/60 text-sm mb-2 block">Nome do Item</label>
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 block">Nome do Item</label>
                 <input
                   type="text"
                   value={newSubcategory.name}
-                  onChange={(e) => setNewSubcategory({ ...newSubcategory, name: e.target.value })}
-                  className="input-field w-full"
-                  placeholder="Ex: Água"
+                  onChange={(e) => { setNewSubcategory({ name: e.target.value }); setSubitemError(''); }}
+                  className="input-field w-full font-bold h-12"
+                  placeholder="Ex: Aluguel, Supermercado..."
                   autoFocus
                 />
               </div>
-              <div>
-                <label className="text-white/60 text-sm mb-2 block">Valor (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newSubcategory.amount}
-                  onChange={(e) => setNewSubcategory({ ...newSubcategory, amount: e.target.value })}
-                  className="input-field w-full"
-                  placeholder="100"
-                />
-              </div>
-              <div className="flex gap-2">
+
+              {subitemError && (
+                <p className="text-red-500 text-xs font-bold flex items-center gap-1">
+                  <X className="w-3 h-3" /> {subitemError}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleEditSubitem}
-                  disabled={isSaving || !newSubcategory.name || !newSubcategory.amount}
-                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                  disabled={isSaving || !newSubcategory.name.trim()}
+                  className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 shadow-emerald-500/10"
                 >
-                  {isSaving && <Loader2 className="w-5 h-5 animate-spin" />}
-                  Salvar
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Edit2 className="w-4 h-4" />}
+                  Confirmar Edição
                 </button>
-                <button onClick={() => { setEditingSubitem(null); setNewSubcategory({ name: '', amount: '' }); }} className="btn-secondary flex-1">
+                <button onClick={() => { setEditingSubitem(null); setNewSubcategory({ name: '' }); setSubitemError(''); }} className="btn-secondary h-12 px-6">
                   Cancelar
                 </button>
               </div>
@@ -1288,50 +1306,55 @@ export default function GoalsPage() {
       {/* Reset Confirmation Modal */}
       {showResetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowResetModal(false)} />
-          <div className="glass-card p-6 w-full max-w-md relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Redefinir Categorias</h2>
-              <button onClick={() => setShowResetModal(false)} className="text-white/60 hover:text-white">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowResetModal(false)} />
+          <div className="glass-card p-8 w-full max-w-md relative z-10 border-current/[0.06] shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl font-black tracking-tight">Reinicialização Estratégica</h2>
+                <p className="opacity-40 text-[10px] font-bold uppercase tracking-widest mt-1">Recuperação de parâmetros padrão</p>
+              </div>
+              <button onClick={() => setShowResetModal(false)} className="p-2 hover:bg-current/5 rounded-xl opacity-40 hover:opacity-100 transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <RotateCcw className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-6">
+              <div className="p-5 bg-orange-500/5 border border-orange-500/20 rounded-2xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                    <RotateCcw className="w-5 h-5 text-orange-500" />
+                  </div>
                   <div>
-                    <p className="text-orange-400 font-medium mb-2">Atenção!</p>
-                    <p className="text-white/70 text-sm">
-                      Esta ação irá resetar todas as categorias e porcentagens criadas para o mês atual ({monthLabel}).
+                    <p className="text-orange-500 font-black text-sm uppercase tracking-wider mb-2">Protocolo de Atenção</p>
+                    <p className="opacity-70 text-sm leading-relaxed">
+                      Esta ação irá resetar todas as categorias e porcentagens criadas para o mês de <span className="font-black">{monthLabel}</span>.
                     </p>
-                    <p className="text-white/70 text-sm mt-2">
-                      As categorias serão redefinidas para os valores padrão:
-                    </p>
-                    <ul className="text-white/60 text-sm mt-2 space-y-1 ml-4 list-disc">
-                      <li>Metas: 10%</li>
-                      <li>Conforto: 15%</li>
-                      <li>Prazeres: 10%</li>
-                      <li>Custo Fixo: 35%</li>
-                      <li>Liberdade Financeira: 25%</li>
-                      <li>Conhecimento: 5%</li>
-                    </ul>
-                    <p className="text-white/50 text-xs mt-3">
-                      ⚠️ Esta ação afetará <strong>somente</strong> o mês atual. Outros meses não serão alterados.
+                    <div className="mt-4 p-3 bg-current/[0.03] rounded-xl border border-current/[0.03]">
+                      <p className="opacity-40 text-[10px] font-black uppercase tracking-widest mb-2">Configuração Resultante:</p>
+                      <ul className="grid grid-cols-2 gap-x-4 gap-y-1 opacity-60 text-[11px] font-bold">
+                        <li className="flex justify-between"><span>Metas</span> <span>10%</span></li>
+                        <li className="flex justify-between"><span>Conforto</span> <span>15%</span></li>
+                        <li className="flex justify-between"><span>Prazeres</span> <span>10%</span></li>
+                        <li className="flex justify-between"><span>Custo Fixo</span> <span>35%</span></li>
+                        <li className="flex justify-between"><span>Liberdade</span> <span>25%</span></li>
+                        <li className="flex justify-between"><span>Conhecimento</span> <span>5%</span></li>
+                      </ul>
+                    </div>
+                    <p className="opacity-40 text-[10px] font-bold mt-4 flex items-center gap-1">
+                      <X className="w-3 h-3" /> Alteração restrita ao período selecionado.
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   onClick={handleResetToDefaults}
                   disabled={isSaving}
-                  className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all flex-1 flex items-center justify-center gap-2"
+                  className="flex-1 h-12 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95"
                 >
-                  {isSaving && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
                   Confirmar Reset
                 </button>
-                <button onClick={() => setShowResetModal(false)} className="btn-secondary flex-1">
+                <button onClick={() => setShowResetModal(false)} className="btn-secondary h-12 px-6">
                   Cancelar
                 </button>
               </div>

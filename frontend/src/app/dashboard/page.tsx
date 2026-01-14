@@ -73,8 +73,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-white/60">Visão geral das suas finanças</p>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="opacity-60">Visão geral das suas finanças</p>
       </div>
 
       {/* Stats Cards */}
@@ -82,20 +82,20 @@ export default function DashboardPage() {
         {/* Balance */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-primary-400" />
+            <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center">
+              <Wallet className="w-6 h-6 text-primary-500" />
             </div>
             <span className={`text-sm font-medium px-2 py-1 rounded-lg ${
               (overview?.balance || 0) >= 0 
-                ? 'bg-green-500/20 text-green-400' 
-                : 'bg-red-500/20 text-red-400'
+                ? 'bg-emerald-500/10 text-emerald-500' 
+                : 'bg-red-500/10 text-red-500'
             }`}>
               {(overview?.balance || 0) >= 0 ? 'Positivo' : 'Negativo'}
             </span>
           </div>
-          <p className="text-white/60 text-sm mb-1">Saldo do Mês</p>
+          <p className="opacity-60 text-sm mb-1">Saldo do Mês</p>
           <p className={`text-2xl font-bold ${
-            (overview?.balance || 0) >= 0 ? 'text-white' : 'text-red-400'
+            (overview?.balance || 0) >= 0 ? '' : 'text-red-500'
           }`}>
             {formatCurrency(overview?.balance || 0)}
           </p>
@@ -104,13 +104,13 @@ export default function DashboardPage() {
         {/* Income */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-green-400" />
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-emerald-500" />
             </div>
-            <ArrowUpRight className="w-5 h-5 text-green-400" />
+            <ArrowUpRight className="w-5 h-5 text-emerald-500" />
           </div>
-          <p className="text-white/60 text-sm mb-1">Receitas</p>
-          <p className="text-2xl font-bold text-green-400">
+          <p className="opacity-60 text-sm mb-1">Receitas</p>
+          <p className="text-2xl font-bold text-emerald-500">
             {formatCurrency(overview?.income || 0)}
           </p>
         </div>
@@ -118,13 +118,13 @@ export default function DashboardPage() {
         {/* Expenses */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-              <TrendingDown className="w-6 h-6 text-red-400" />
+            <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <TrendingDown className="w-6 h-6 text-red-500" />
             </div>
-            <ArrowDownRight className="w-5 h-5 text-red-400" />
+            <ArrowDownRight className="w-5 h-5 text-red-500" />
           </div>
-          <p className="text-white/60 text-sm mb-1">Despesas</p>
-          <p className="text-2xl font-bold text-red-400">
+          <p className="opacity-60 text-sm mb-1">Despesas</p>
+          <p className="text-2xl font-bold text-red-500">
             {formatCurrency(overview?.expense || 0)}
           </p>
         </div>
@@ -133,20 +133,20 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Monthly Chart */}
         <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Histórico Mensal</h2>
+          <h2 className="text-lg font-semibold mb-6">Histórico Mensal</h2>
           <div className="space-y-4">
             {monthly?.map((month, index) => (
               <div key={index} className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/60">{month.month} {month.year}</span>
+                  <span className="opacity-60">{month.month} {month.year}</span>
                   <div className="flex gap-4">
-                    <span className="text-green-400">{formatCurrency(month.income)}</span>
-                    <span className="text-red-400">{formatCurrency(month.expense)}</span>
+                    <span className="text-emerald-500">{formatCurrency(month.income)}</span>
+                    <span className="text-red-500">{formatCurrency(month.expense)}</span>
                   </div>
                 </div>
                 <div className="flex gap-1 h-2">
                   <div 
-                    className="bg-green-500 rounded-full transition-all"
+                    className="bg-emerald-500 rounded-full transition-all"
                     style={{ width: `${maxMonthlyValue ? (month.income / maxMonthlyValue) * 100 : 0}%` }}
                   />
                   <div 
@@ -158,7 +158,7 @@ export default function DashboardPage() {
             ))}
 
             {(!monthly || monthly.length === 0) && (
-              <p className="text-white/40 text-center py-8">
+              <p className="opacity-40 text-center py-8">
                 Nenhum dado disponível
               </p>
             )}
@@ -167,32 +167,32 @@ export default function DashboardPage() {
 
         {/* Recent Transactions */}
         <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Transações Recentes</h2>
+          <h2 className="text-lg font-semibold mb-6">Transações Recentes</h2>
           <div className="space-y-3">
             {overview?.recentTransactions?.map((transaction) => (
               <div 
                 key={transaction.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                className="flex items-center justify-between p-3 rounded-xl bg-current/5 hover:bg-current/10 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                     transaction.type === 'INCOME' 
-                      ? 'bg-green-500/20' 
-                      : 'bg-red-500/20'
+                      ? 'bg-emerald-500/10' 
+                      : 'bg-red-500/10'
                   }`}>
                     <span className="text-lg">
                       {transaction.category?.icon || (transaction.type === 'INCOME' ? '💰' : '💸')}
                     </span>
                   </div>
                   <div>
-                    <p className="text-white font-medium">{transaction.description}</p>
-                    <p className="text-white/40 text-sm">
+                    <p className="font-medium">{transaction.description}</p>
+                    <p className="opacity-40 text-sm">
                       {transaction.category?.name || 'Sem categoria'} • {formatDate(transaction.date)}
                     </p>
                   </div>
                 </div>
                 <span className={`font-semibold ${
-                  transaction.type === 'INCOME' ? 'text-green-400' : 'text-red-400'
+                  transaction.type === 'INCOME' ? 'text-emerald-500' : 'text-red-500'
                 }`}>
                   {transaction.type === 'INCOME' ? '+' : '-'}
                   {formatCurrency(Number(transaction.amount))}
@@ -201,7 +201,7 @@ export default function DashboardPage() {
             ))}
 
             {(!overview?.recentTransactions || overview.recentTransactions.length === 0) && (
-              <p className="text-white/40 text-center py-8">
+              <p className="opacity-40 text-center py-8">
                 Nenhuma transação ainda
               </p>
             )}

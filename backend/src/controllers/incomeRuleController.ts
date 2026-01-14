@@ -65,17 +65,80 @@ export const incomeRuleController = {
       // Get base income (from first rule or default)
       const baseIncome = rules.length > 0 ? Number(rules[0].baseIncome) : 5000;
 
+      // FETCH SPENDING DATA FOR ALL RULES AND ITEMS IN ONE GO
+      // 1. Define date range for the requested month
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+      // 2. Fetch all transactions for this user in this month
+      const transactions = await prisma.transaction.findMany({
+        where: {
+          userId,
+          type: 'EXPENSE',
+          date: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+          OR: [
+            { incomeRuleId: { in: rules.map(r => r.id) } },
+            { ruleItemId: { in: rules.flatMap(r => r.items.map(i => i.id)) } }
+          ]
+        }
+      });
+
+      // 3. Aggregate spending
+      const ruleSpendingMap = new Map<string, number>();
+      const itemSpendingMap = new Map<string, number>();
+
+      transactions.forEach(t => {
+        if (t.incomeRuleId) {
+          ruleSpendingMap.set(t.incomeRuleId, (ruleSpendingMap.get(t.incomeRuleId) || 0) + Number(t.amount));
+        }
+        if (t.ruleItemId) {
+          itemSpendingMap.set(t.ruleItemId, (itemSpendingMap.get(t.ruleItemId) || 0) + Number(t.amount));
+          
+          // Also count towards the parent rule if not already counted via incomeRuleId
+          // This ensures that transactions assigned ONLY to an item are still reflected in the rule total
+          const item = rules.flatMap(r => r.items).find(i => i.id === t.ruleItemId);
+          if (item && !t.incomeRuleId) {
+            ruleSpendingMap.set(item.ruleId, (ruleSpendingMap.get(item.ruleId) || 0) + Number(t.amount));
+          }
+        }
+      });
+
       res.json({
         success: true,
-        data: rules.map((rule: IncomeRuleWithItems) => ({
-          ...rule,
-          percentage: Number(rule.percentage),
-          baseIncome: Number(rule.baseIncome),
-          items: rule.items.map((item: RuleItem) => ({
-            ...item,
-            amount: Number(item.amount),
-          })),
-        })),
+        data: rules.map((rule: IncomeRuleWithItems) => {
+          const totalSpent = ruleSpendingMap.get(rule.id) || 0;
+          const budgetAmount = (baseIncome * Number(rule.percentage)) / 100;
+          
+          return {
+            ...rule,
+            percentage: Number(rule.percentage),
+            baseIncome: Number(rule.baseIncome),
+            spending: {
+              totalSpent,
+              budgetAmount,
+              remaining: budgetAmount - totalSpent,
+              percentage: budgetAmount > 0 ? (totalSpent / budgetAmount) * 100 : 0,
+              isOverBudget: totalSpent > budgetAmount,
+            },
+            items: rule.items.map((item: RuleItem) => {
+              const itemSpent = itemSpendingMap.get(item.id) || 0;
+              const itemBudget = Number(item.amount);
+              return {
+                ...item,
+                amount: itemBudget,
+                spending: {
+                  totalSpent: itemSpent,
+                  remaining: itemBudget - itemSpent,
+                  percentage: itemBudget > 0 ? (itemSpent / itemBudget) * 100 : 0,
+                  isOverBudget: itemSpent > itemBudget,
+                }
+              };
+            }),
+          };
+        }),
         totalPercentage,
         baseIncome,
         month: usingFallback ? fallbackMonth : month,
@@ -218,6 +281,10 @@ export const incomeRuleController = {
         return;
       }
 
+      // Create a map to track created rules and items by name
+      const ruleNameToIdMap = new Map<string, string>();
+      const ruleIdToItemsMap = new Map<string, Map<string, string>>(); // ruleId -> (itemName -> itemId)
+
       // Copy each rule with its items
       for (const sourceRule of sourceRules) {
         const newRule = await prisma.incomeRule.create({
@@ -233,21 +300,121 @@ export const incomeRuleController = {
           },
         });
 
+        ruleNameToIdMap.set(sourceRule.name, newRule.id);
+        const itemMap = new Map<string, string>();
+
         // Copy items
         for (const item of sourceRule.items) {
-          await prisma.ruleItem.create({
+          const newItem = await prisma.ruleItem.create({
             data: {
               name: item.name,
               amount: item.amount,
               ruleId: newRule.id,
             },
           });
+          itemMap.set(item.name, newItem.id);
+        }
+
+        ruleIdToItemsMap.set(newRule.id, itemMap);
+      }
+
+      // HANDLE PENDING INSTALLMENT TRANSACTIONS
+      // Find installment transactions for the target month that have no rule/item linked
+      const startOfMonth = new Date(toYear, toMonth - 1, 1);
+      const endOfMonth = new Date(toYear, toMonth, 0, 23, 59, 59);
+
+      const pendingInstallments = await prisma.transaction.findMany({
+        where: {
+          userId,
+          isInstallment: true,
+          incomeRuleId: null,
+          ruleItemId: null,
+          date: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+      });
+
+      let linkedTransactions = 0;
+
+      // For each pending installment, try to find a matching transaction from the source month
+      // that has the same installmentGroupId to determine which category it belongs to
+      for (const pendingTx of pendingInstallments) {
+        if (!pendingTx.installmentGroupId) continue;
+
+        // Find the first transaction in this installment group (which should have the link)
+        const firstInstallment = await prisma.transaction.findFirst({
+          where: {
+            installmentGroupId: pendingTx.installmentGroupId,
+            installmentNumber: 1,
+          },
+          include: {
+            ruleItem: {
+              include: { rule: true },
+            },
+            incomeRule: true,
+          },
+        });
+
+        if (!firstInstallment) continue;
+
+        let targetRuleId: string | null = null;
+        let targetItemId: string | null = null;
+
+        // If first installment has a ruleItem, find/create matching item in new month
+        if (firstInstallment.ruleItem) {
+          const ruleName = firstInstallment.ruleItem.rule.name;
+          const itemName = firstInstallment.ruleItem.name;
+
+          // Find matching rule in the new month
+          targetRuleId = ruleNameToIdMap.get(ruleName) || null;
+
+          if (targetRuleId) {
+            // Check if the subitem already exists
+            const itemMap = ruleIdToItemsMap.get(targetRuleId);
+            targetItemId = itemMap?.get(itemName) || null;
+
+            // If subitem doesn't exist, create it
+            if (!targetItemId) {
+              const newItem = await prisma.ruleItem.create({
+                data: {
+                  name: itemName,
+                  amount: firstInstallment.ruleItem.amount,
+                  ruleId: targetRuleId,
+                },
+              });
+              targetItemId = newItem.id;
+
+              // Update the map for future use
+              if (itemMap) {
+                itemMap.set(itemName, newItem.id);
+              }
+            }
+          }
+        } else if (firstInstallment.incomeRule) {
+          // Just link to the main rule without subitem
+          const ruleName = firstInstallment.incomeRule.name;
+          targetRuleId = ruleNameToIdMap.get(ruleName) || null;
+        }
+
+        // Update the pending transaction with the found links
+        if (targetRuleId || targetItemId) {
+          await prisma.transaction.update({
+            where: { id: pendingTx.id },
+            data: {
+              incomeRuleId: targetRuleId,
+              ruleItemId: targetItemId,
+            },
+          });
+          linkedTransactions++;
         }
       }
 
       res.json({
         success: true,
-        message: `${sourceRules.length} regras copiadas com sucesso`,
+        message: `${sourceRules.length} regras copiadas com sucesso. ${linkedTransactions > 0 ? `${linkedTransactions} parcelas vinculadas.` : ''}`,
+        linkedInstallments: linkedTransactions,
       });
     } catch (error) {
       console.error('Error copying rules:', error);
@@ -612,6 +779,9 @@ export const incomeRuleController = {
         where: { userId, month, year },
       });
 
+      // Create a map to track created rules by name
+      const ruleNameToIdMap = new Map<string, string>();
+
       // Create new default rules
       const createdRules = [];
       for (const rule of DEFAULT_RULES) {
@@ -628,6 +798,9 @@ export const incomeRuleController = {
           },
           include: { items: true },
         });
+        
+        ruleNameToIdMap.set(rule.name, newRule.id);
+        
         createdRules.push({
           ...newRule,
           percentage: Number(newRule.percentage),
@@ -636,10 +809,98 @@ export const incomeRuleController = {
         });
       }
 
+      // HANDLE PENDING INSTALLMENT TRANSACTIONS
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+      console.log('=== DEBUG: Looking for pending installments ===');
+      console.log('Month:', month, 'Year:', year);
+      console.log('Date range:', startOfMonth, 'to', endOfMonth);
+
+      const pendingInstallments = await prisma.transaction.findMany({
+        where: {
+          userId,
+          isInstallment: true,
+          incomeRuleId: null,
+          ruleItemId: null,
+          date: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+      });
+
+      console.log('Found pending installments:', pendingInstallments.length);
+      if (pendingInstallments.length > 0) {
+        console.log('First pending:', JSON.stringify(pendingInstallments[0], null, 2));
+      }
+
+      let linkedTransactions = 0;
+      const createdSubitems: string[] = [];
+
+      for (const pendingTx of pendingInstallments) {
+        if (!pendingTx.installmentGroupId) continue;
+
+        // Find the first transaction in this installment group
+        const firstInstallment = await prisma.transaction.findFirst({
+          where: {
+            installmentGroupId: pendingTx.installmentGroupId,
+            installmentNumber: 1,
+          },
+          include: {
+            ruleItem: {
+              include: { rule: true },
+            },
+            incomeRule: true,
+          },
+        });
+
+        if (!firstInstallment) continue;
+
+        let targetRuleId: string | null = null;
+        let targetItemId: string | null = null;
+
+        if (firstInstallment.ruleItem) {
+          const ruleName = firstInstallment.ruleItem.rule.name;
+          const itemName = firstInstallment.ruleItem.name;
+
+          targetRuleId = ruleNameToIdMap.get(ruleName) || null;
+
+          if (targetRuleId) {
+            // Create the subitem for this installment
+            const newItem = await prisma.ruleItem.create({
+              data: {
+                name: itemName,
+                amount: firstInstallment.ruleItem.amount,
+                ruleId: targetRuleId,
+              },
+            });
+            targetItemId = newItem.id;
+            createdSubitems.push(itemName);
+          }
+        } else if (firstInstallment.incomeRule) {
+          const ruleName = firstInstallment.incomeRule.name;
+          targetRuleId = ruleNameToIdMap.get(ruleName) || null;
+        }
+
+        if (targetRuleId || targetItemId) {
+          await prisma.transaction.update({
+            where: { id: pendingTx.id },
+            data: {
+              incomeRuleId: targetRuleId,
+              ruleItemId: targetItemId,
+            },
+          });
+          linkedTransactions++;
+        }
+      }
+
       res.json({
         success: true,
-        message: 'Categorias redefinidas com sucesso para este mês',
+        message: `Categorias redefinidas com sucesso. ${linkedTransactions > 0 ? `${linkedTransactions} parcelas vinculadas.` : ''}`,
         data: createdRules,
+        linkedInstallments: linkedTransactions,
+        createdSubitems,
       });
     } catch (error) {
       console.error('Error resetting rules:', error);

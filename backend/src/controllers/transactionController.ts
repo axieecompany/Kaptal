@@ -11,6 +11,9 @@ const createTransactionSchema = z.object({
   categoryId: z.string().uuid().optional().nullable(),
   ruleItemId: z.string().uuid().optional().nullable(),
   incomeRuleId: z.string().uuid().optional().nullable(),
+  // Installment fields
+  isInstallment: z.boolean().optional().default(false),
+  totalInstallments: z.number().min(2).max(48).optional(),
 });
 
 const updateTransactionSchema = createTransactionSchema.partial();
@@ -65,7 +68,7 @@ export async function getTransactions(req: Request, res: Response): Promise<void
             }
           }
         },
-        orderBy: { date: 'desc' },
+        orderBy: [{ date: 'desc' }, { installmentNumber: 'asc' }],
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -106,7 +109,26 @@ export async function createTransaction(req: Request, res: Response): Promise<vo
       return;
     }
 
-    const { description, amount, type, date, categoryId, ruleItemId, incomeRuleId } = validation.data;
+    const { 
+      description, 
+      amount, 
+      type, 
+      date, 
+      categoryId, 
+      ruleItemId, 
+      incomeRuleId,
+      isInstallment,
+      totalInstallments 
+    } = validation.data;
+
+    // Validate installment data
+    if (isInstallment && (!totalInstallments || totalInstallments < 2)) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Para compras parceladas, informe a quantidade de parcelas (mínimo 2)' 
+      });
+      return;
+    }
 
     // Verify category belongs to user if provided
     if (categoryId) {
@@ -144,6 +166,86 @@ export async function createTransaction(req: Request, res: Response): Promise<vo
       }
     }
 
+    // Handle installment purchases - create multiple transactions
+    if (isInstallment && totalInstallments) {
+      const installmentGroupId = `inst_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      const baseDate = date ? new Date(date) : new Date();
+      const transactions = [];
+
+      // Get original item name for storing in description (for later linking)
+      let originalItemName = '';
+      let originalRuleName = '';
+      
+      if (ruleItemId) {
+        const originalItem = await prisma.ruleItem.findFirst({
+          where: { id: ruleItemId },
+          include: { rule: true },
+        });
+        if (originalItem) {
+          originalItemName = originalItem.name;
+          originalRuleName = originalItem.rule.name;
+        }
+      } else if (incomeRuleId) {
+        const originalRule = await prisma.incomeRule.findFirst({
+          where: { id: incomeRuleId, userId },
+        });
+        if (originalRule) {
+          originalRuleName = originalRule.name;
+        }
+      }
+
+      for (let i = 0; i < totalInstallments; i++) {
+        // Calculate date for this installment (add i months to base date)
+        const installmentDate = new Date(baseDate);
+        installmentDate.setMonth(installmentDate.getMonth() + i);
+
+        // Only first installment keeps the rule/subitem link
+        // Future months will be linked when user sets up that month's rules
+        const isFirstInstallment = i === 0;
+
+        const transaction = await prisma.transaction.create({
+          data: {
+            description: `${description} (${i + 1}/${totalInstallments})`,
+            amount: new Prisma.Decimal(amount),
+            type,
+            date: installmentDate,
+            categoryId: isFirstInstallment ? categoryId : null,
+            incomeRuleId: isFirstInstallment ? incomeRuleId : null,
+            ruleItemId: isFirstInstallment ? ruleItemId : null,
+            userId,
+            isInstallment: true,
+            installmentNumber: i + 1,
+            totalInstallments,
+            installmentGroupId,
+          },
+          include: { 
+            category: true,
+            incomeRule: true,
+            ruleItem: {
+              include: {
+                rule: true
+              }
+            }
+          },
+        });
+        transactions.push(transaction);
+      }
+
+      res.status(201).json({ 
+        success: true, 
+        data: transactions[0], // Return first installment
+        message: `${totalInstallments} parcelas criadas com sucesso`,
+        installmentsCreated: totalInstallments,
+        // Pass info for frontend to show
+        installmentInfo: {
+          originalItemName,
+          originalRuleName,
+        }
+      });
+      return;
+    }
+
+    // Regular single transaction
     const transaction = await prisma.transaction.create({
       data: {
         description,

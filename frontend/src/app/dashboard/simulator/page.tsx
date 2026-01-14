@@ -1,9 +1,9 @@
 "use client";
 
 import {
-    Calculator,
-    Calendar,
-    Info
+  Calculator,
+  Calendar,
+  Info
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -111,89 +111,89 @@ export default function SimulatorPage() {
     <div className="space-y-8 pb-12 animate-in fade-in duration-500">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Simulador de Juros Compostos</h1>
-        <p className="text-white/60">Planeje seu futuro financeiro e veja seu dinheiro crescer</p>
+        <h1 className="text-2xl font-bold">Simulador de Juros Compostos</h1>
+        <p className="opacity-60">Planeje seu futuro financeiro e veja seu dinheiro crescer</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Sidebar Inputs */}
         <div className="lg:col-span-1 space-y-6">
           <div className="glass-card p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Calculator className="w-5 h-5 text-primary-400" />
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-primary-500" />
               Parâmetros
             </h2>
             
             <div className="space-y-5">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white/60">Valor inicial</label>
+                <label className="text-sm font-medium opacity-60">Valor inicial</label>
                 <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-primary-400 transition-colors">R$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors">R$</span>
                   <input
                     type="number"
                     value={initialValue}
                     onChange={(e) => setInitialValue(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+                    className="input-field pl-12"
                     placeholder="0,00"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white/60">Valor mensal</label>
+                <label className="text-sm font-medium opacity-60">Valor mensal</label>
                 <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-primary-400 transition-colors">R$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors">R$</span>
                   <input
                     type="number"
                     value={monthlyValue}
                     onChange={(e) => setMonthlyValue(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+                    className="input-field pl-12"
                     placeholder="0,00"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white/60">Taxa de juros</label>
+                <label className="text-sm font-medium opacity-60">Taxa de juros</label>
                 <div className="flex gap-2">
                   <div className="relative flex-1 group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-primary-400 transition-colors">%</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors">%</span>
                     <input
                       type="number"
                       value={interestRate}
                       onChange={(e) => setInterestRate(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+                      className="input-field pl-10"
                       placeholder="0,00"
                     />
                   </div>
                   <select
                     value={rateType}
                     onChange={(e) => setRateType(e.target.value as any)}
-                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all cursor-pointer"
+                    className="input-field w-auto px-4 py-3 cursor-pointer"
                   >
-                    <option value="monthly">Mensal</option>
-                    <option value="annual">Anual</option>
+                    <option value="monthly" className="bg-[var(--sidebar-bg)] font-sans">Mensal</option>
+                    <option value="annual" className="bg-[var(--sidebar-bg)] font-sans">Anual</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white/60">Período</label>
+                <label className="text-sm font-medium opacity-60">Período</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     value={period}
                     onChange={(e) => setPeriod(e.target.value)}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
+                    className="flex-1 input-field"
                     placeholder="0"
                   />
                   <select
                     value={periodType}
                     onChange={(e) => setPeriodType(e.target.value as any)}
-                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all cursor-pointer"
+                    className="input-field w-auto px-4 py-3 cursor-pointer"
                   >
-                    <option value="months">Meses</option>
-                    <option value="years">Anos</option>
+                    <option value="months" className="bg-[var(--sidebar-bg)] font-sans">Meses</option>
+                    <option value="years" className="bg-[var(--sidebar-bg)] font-sans">Anos</option>
                   </select>
                 </div>
               </div>
@@ -201,15 +201,8 @@ export default function SimulatorPage() {
 
             <div className="pt-4 space-y-3">
               <button
-                onClick={() => {
-                   setInitialValue('5000');
-                   setMonthlyValue('1000');
-                   setInterestRate('1');
-                   setPeriod('10');
-                   setRateType('monthly');
-                   setPeriodType('years');
-                }}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-500 hover:to-accent-500 text-white font-semibold transition-all shadow-lg shadow-primary-500/20 active:scale-[0.98]"
+                onClick={() => calculate()}
+                className="btn-primary w-full shadow-emerald-500/20 active:scale-[0.98]"
               >
                 Calcular
               </button>
@@ -220,7 +213,7 @@ export default function SimulatorPage() {
                   setInterestRate('');
                   setPeriod('');
                 }}
-                className="w-full py-3 rounded-xl border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition-all text-sm"
+                className="w-full py-3 rounded-xl border border-current/10 opacity-40 hover:opacity-100 hover:bg-current/5 transition-all text-sm"
               >
                 Limpar
               </button>
@@ -228,8 +221,8 @@ export default function SimulatorPage() {
           </div>
 
           <div className="bg-primary-500/10 border border-primary-500/20 rounded-2xl p-4 flex gap-3">
-            <Info className="w-5 h-5 text-primary-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-white/50 leading-relaxed">
+            <Info className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
+            <p className="text-sm opacity-50 leading-relaxed">
               O cálculo de juros compostos com aportes mensais considera que os depósitos são realizados no final de cada mês.
             </p>
           </div>
@@ -239,40 +232,40 @@ export default function SimulatorPage() {
         <div className="lg:col-span-2 space-y-8">
           {/* Summary Stats */}
           <div className="grid sm:grid-cols-3 gap-6">
-            <div className="glass-card p-6 bg-gradient-to-br from-primary-500/10 to-transparent border-primary-500/20 overflow-hidden relative">
+            <div className="glass-card p-6 border-l-4 border-primary-500 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-              <p className="text-white/40 text-sm mb-1 uppercase tracking-wider font-semibold">Valor total final</p>
-              <p className="text-2xl font-bold text-white tracking-tight">{formatCurrency(totalBalance)}</p>
+              <p className="opacity-40 text-sm mb-1 uppercase tracking-wider font-semibold">Valor total final</p>
+              <p className="text-2xl font-bold tracking-tight">{formatCurrency(totalBalance)}</p>
             </div>
-            <div className="glass-card p-6">
-              <p className="text-white/40 text-sm mb-1 uppercase tracking-wider font-semibold">Valor total investido</p>
-              <p className="text-xl font-bold text-white tracking-tight">{formatCurrency(totalInvested)}</p>
+            <div className="glass-card p-6 border-l-4 border-primary-500/40">
+              <p className="opacity-40 text-sm mb-1 uppercase tracking-wider font-semibold">Valor total investido</p>
+              <p className="text-xl font-bold tracking-tight">{formatCurrency(totalInvested)}</p>
             </div>
-            <div className="glass-card p-6 border-green-500/20">
-              <p className="text-white/40 text-sm mb-1 uppercase tracking-wider font-semibold">Total em juros</p>
-              <p className="text-xl font-bold text-green-400 tracking-tight">{formatCurrency(totalInterest)}</p>
+            <div className="glass-card p-6 border-l-4 border-emerald-500">
+              <p className="opacity-40 text-sm mb-1 uppercase tracking-wider font-semibold">Total em juros</p>
+              <p className="text-xl font-bold text-emerald-500 tracking-tight">{formatCurrency(totalInterest)}</p>
             </div>
           </div>
 
           {/* Chart Section */}
           <div className="glass-card p-8">
             <div className="flex items-center justify-between mb-8">
-               <h3 className="text-lg font-semibold text-white">Projeção de Crescimento</h3>
+               <h3 className="text-lg font-semibold">Projeção de Crescimento</h3>
                <div className="flex gap-4">
                  <div className="flex items-center gap-2">
                    <div className="w-3 h-3 rounded-sm bg-primary-500" />
-                   <span className="text-xs text-white/40">Investido</span>
+                   <span className="text-xs opacity-40">Investido</span>
                  </div>
                  <div className="flex items-center gap-2">
-                   <div className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/30" />
-                   <span className="text-xs text-white/40">Juros</span>
+                   <div className="w-3 h-3 rounded-sm bg-emerald-500/40 border border-emerald-500/30" />
+                   <span className="text-xs opacity-40">Juros</span>
                  </div>
                </div>
             </div>
             
             <div className="h-72 mt-4 relative flex gap-4">
               {/* Y-axis labels */}
-              <div className="flex flex-col justify-between h-[calc(100%-32px)] text-[10px] text-white/30 font-medium tabular-nums w-10 text-right">
+              <div className="flex flex-col justify-between h-[calc(100%-32px)] text-[10px] opacity-30 font-medium tabular-nums w-10 text-right">
                 {[...Array(5)].map((_, i) => {
                   const val = maxVal * (1 - i / 4);
                   const formatted = val >= 1000000 
@@ -289,26 +282,26 @@ export default function SimulatorPage() {
                   {points.map((data, idx) => (
                     <div key={idx} className="flex-1 flex flex-col items-center group relative h-full justify-end">
                       {/* Tooltip */}
-                      <div className="absolute bottom-full mb-3 bg-[#11111a] border border-white/10 p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-all z-20 pointer-events-none whitespace-nowrap shadow-2xl scale-95 group-hover:scale-100 origin-bottom">
+                      <div className="absolute bottom-full mb-3 bg-[var(--sidebar-bg)] border border-[var(--sidebar-border)] p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-all z-20 pointer-events-none whitespace-nowrap shadow-2xl scale-95 group-hover:scale-100 origin-bottom">
                         <div className="flex items-center gap-2 mb-2">
-                          <Calendar className="w-3 h-3 text-primary-400" />
-                          <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Período: {data.month} meses</span>
+                          <Calendar className="w-3 h-3 text-primary-500" />
+                          <span className="text-[10px] opacity-40 font-bold uppercase tracking-wider">Período: {data.month} meses</span>
                         </div>
-                        <p className="text-sm font-bold text-white mb-2">{formatCurrency(data.balance)}</p>
-                        <div className="space-y-1 pt-2 border-t border-white/5">
+                        <p className="text-sm font-bold mb-2">{formatCurrency(data.balance)}</p>
+                        <div className="space-y-1 pt-2 border-t border-current/5">
                           <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-1.5 text-[10px] text-white/60">
+                            <div className="flex items-center gap-1.5 text-[10px] opacity-60">
                               <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
                               <span>Investido:</span>
                             </div>
-                            <span className="text-[10px] text-white font-medium">{formatCurrency(data.totalInvested)}</span>
+                            <span className="text-[10px] font-medium">{formatCurrency(data.totalInvested)}</span>
                           </div>
                           <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-1.5 text-[10px] text-white/60">
-                              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                            <div className="flex items-center gap-1.5 text-[10px] opacity-60">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                               <span>Juros:</span>
                             </div>
-                            <span className="text-[10px] text-green-400 font-medium">{formatCurrency(data.totalInterest)}</span>
+                            <span className="text-[10px] text-emerald-500 font-medium">{formatCurrency(data.totalInterest)}</span>
                           </div>
                         </div>
                       </div>
@@ -317,7 +310,7 @@ export default function SimulatorPage() {
                       <div className="w-full flex flex-col justify-end h-full">
                          {/* Interest Segment */}
                          <div 
-                          className="w-full bg-green-500/40 border-t border-green-500/30 rounded-t-lg transition-all duration-500 group-hover:bg-green-500/50"
+                          className="w-full bg-emerald-500/40 border-t border-emerald-500/30 rounded-t-lg transition-all duration-500 group-hover:bg-emerald-500/50"
                           style={{ height: `${(data.totalInterest / maxVal) * 100}%` }}
                         />
                         {/* Invested Segment */}
@@ -326,7 +319,7 @@ export default function SimulatorPage() {
                           style={{ height: `${(data.totalInvested / maxVal) * 100}%`, borderRadius: data.totalInterest === 0 ? '8px 8px 0 0' : '0' }}
                         />
                       </div>
-                      <span className="text-[9px] text-white/20 mt-3 font-medium uppercase tracking-tighter truncate w-full text-center">
+                      <span className="text-[9px] opacity-20 mt-3 font-medium uppercase tracking-tighter truncate w-full text-center">
                         {data.month === 0 ? "0" : data.month % 12 === 0 ? `${data.month / 12}a` : `${data.month}m`}
                       </span>
                     </div>
@@ -335,10 +328,10 @@ export default function SimulatorPage() {
                 
                 {/* Grid System */}
                 <div className="absolute inset-0 -z-10 flex flex-col justify-between pointer-events-none pb-[21px]">
-                  <div className="w-full h-px bg-white/5" />
-                  <div className="w-full h-px bg-white/5" />
-                  <div className="w-full h-px bg-white/5" />
-                  <div className="w-full h-px bg-white/5" />
+                  <div className="w-full h-px bg-current/5" />
+                  <div className="w-full h-px bg-current/5" />
+                  <div className="w-full h-px bg-current/5" />
+                  <div className="w-full h-px bg-current/5" />
                   <div className="w-full h-px border-b border-primary-500/10" />
                 </div>
               </div>
@@ -347,24 +340,24 @@ export default function SimulatorPage() {
 
           {/* Breakdown Table */}
           <div className="glass-card overflow-hidden">
-            <div className="px-8 py-6 border-b border-white/10 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Detalhamento Mensal</h3>
-              <div className="text-xs text-white/40 italic">
+            <div className="px-4 sm:px-8 py-4 sm:py-6 thin-border-b flex items-center justify-between">
+              <h3 className="text-base sm:text-lg font-semibold">Detalhamento Mensal</h3>
+              <div className="text-[10px] sm:text-xs opacity-40 italic hidden sm:block">
                  Mostrando todos os {results.length} meses
               </div>
             </div>
             <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-[#11111a] text-white/30 text-[10px] uppercase font-bold tracking-widest">
-                    <th className="py-4 px-8 border-b border-white/10">Mês</th>
-                    <th className="py-4 px-8 border-b border-white/10">Juros do Mês</th>
-                    <th className="py-4 px-8 border-b border-white/10 text-right">Acumulado em Juros</th>
-                    <th className="py-4 px-8 border-b border-white/10 text-right">Total Investido</th>
-                    <th className="py-4 px-8 border-b border-white/10 text-right">Saldo Final</th>
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead className="sticky top-0 z-10 bg-[var(--sidebar-bg)] backdrop-blur">
+                  <tr className="text-current opacity-30 text-[9px] sm:text-[10px] uppercase font-bold tracking-widest border-b border-current/[0.05]">
+                    <th className="py-3 sm:py-4 px-4 sm:px-8">Mês</th>
+                    <th className="py-3 sm:py-4 px-4 sm:px-8">Juros</th>
+                    <th className="py-3 sm:py-4 px-4 sm:px-8 text-right">Acumulado</th>
+                    <th className="py-3 sm:py-4 px-4 sm:px-8 text-right">Investido</th>
+                    <th className="py-3 sm:py-4 px-4 sm:px-8 text-right">Saldo</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="thin-divide">
                   {results.map((row, idx) => {
                     const isLast = idx === results.length - 1 && results.length > 1;
                     return (
@@ -372,23 +365,23 @@ export default function SimulatorPage() {
                         key={row.month} 
                         className={`group transition-colors ${
                           isLast 
-                            ? "bg-primary-500/[0.03] border-t-2 border-primary-500/20 shadow-[0_-8px_16px_-8px_rgba(37,99,235,0.1)]" 
-                            : "hover:bg-white/[0.02]"
+                            ? "bg-primary-500/[0.03] border-t-2 border-primary-500/20" 
+                            : "hover:bg-primary-500/[0.02]"
                         }`}
                       >
-                        <td className={`py-4 px-8 font-medium ${isLast ? "text-primary-400 font-black" : "text-white/60"}`}>
-                          {row.month === 0 ? "Início" : isLast ? `FINAL (Mês ${row.month})` : `Mês ${row.month}`}
+                        <td className={`py-3 sm:py-4 px-4 sm:px-8 font-medium text-sm sm:text-base ${isLast ? "text-primary-500 font-black" : "opacity-60"}`}>
+                          {row.month === 0 ? "Início" : isLast ? `FINAL` : `${row.month}`}
                         </td>
-                        <td className={`py-4 px-8 font-medium ${isLast ? "text-green-400 font-black" : "text-green-400"}`}>
+                        <td className={`py-3 sm:py-4 px-4 sm:px-8 font-medium text-sm sm:text-base ${isLast ? "text-emerald-500 font-black" : "text-emerald-500"}`}>
                           {row.month === 0 ? "-" : formatCurrency(row.interest)}
                         </td>
-                        <td className={`py-4 px-8 text-right tabular-nums ${isLast ? "text-white/80 font-bold" : "text-white/40"}`}>
+                        <td className={`py-3 sm:py-4 px-4 sm:px-8 text-right tabular-nums text-sm sm:text-base ${isLast ? "opacity-80 font-bold" : "opacity-40"}`}>
                           {row.month === 0 ? "-" : formatCurrency(row.totalInterest)}
                         </td>
-                        <td className={`py-4 px-8 text-right tabular-nums ${isLast ? "text-white/80 font-bold" : "text-white/40"}`}>
+                        <td className={`py-3 sm:py-4 px-4 sm:px-8 text-right tabular-nums text-sm sm:text-base ${isLast ? "opacity-80 font-bold" : "opacity-40"}`}>
                            {formatCurrency(row.totalInvested)}
                         </td>
-                        <td className={`py-4 px-8 text-right tabular-nums ${isLast ? "text-white font-black text-lg" : "text-white font-semibold"}`}>
+                        <td className={`py-3 sm:py-4 px-4 sm:px-8 text-right tabular-nums text-sm sm:text-base ${isLast ? "font-black text-base sm:text-lg" : "font-semibold"}`}>
                           {formatCurrency(row.balance)}
                         </td>
                       </tr>

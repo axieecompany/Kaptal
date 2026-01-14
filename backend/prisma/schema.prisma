@@ -23,6 +23,7 @@ model User {
   categoryBudgets CategoryBudget[]
   incomeRules     IncomeRule[]
   savingsGoals    SavingsGoal[]
+  stockHoldings   StockHolding[]
 }
 
 model VerificationToken {
@@ -76,6 +77,12 @@ model Transaction {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
+  // Installment purchase fields
+  isInstallment       Boolean  @default(false)
+  installmentNumber   Int?     // Which installment (1, 2, 3...)
+  totalInstallments   Int?     // Total number of installments
+  installmentGroupId  String?  // Groups all installments of same purchase
+
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
@@ -93,6 +100,7 @@ model Transaction {
   @@index([ruleItemId])
   @@index([incomeRuleId])
   @@index([date])
+  @@index([installmentGroupId])
 }
 
 model MonthlyGoal {
@@ -202,4 +210,45 @@ model SavingsDeposit {
   goal      SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
 
   @@index([goalId])
+}
+
+model StockHolding {
+  id            String   @id @default(uuid())
+  symbol        String   // Ex: PETR4, VALE3
+  name          String?  // Nome da empresa (preenchido via API)
+  quantity      Int      // Quantidade de ações
+  averagePrice  Decimal  @db.Decimal(12, 2) // Preço médio de compra
+  averageCost   Decimal  @db.Decimal(12, 2) // Custo médio (inclui taxas)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  dividends     Dividend[]
+
+  @@unique([userId, symbol])
+  @@index([userId])
+}
+
+model Dividend {
+  id        String       @id @default(uuid())
+  amount    Decimal      @db.Decimal(12, 2) // Valor recebido
+  type      DividendType // DIVIDEND, JCP, etc.
+  date      DateTime     // Data do pagamento
+  createdAt DateTime     @default(now())
+
+  holdingId String
+  holding   StockHolding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+
+  @@index([holdingId])
+  @@index([date])
+}
+
+enum DividendType {
+  DIVIDEND
+  JCP
+  RENDIMENTO
+  BONUS
+  OTHER
 }
