@@ -686,5 +686,13 @@ export const dividendsApi = {
     }),
 };
 
+export const aiApi = {
+  chat: (message: string, history: { role: 'user' | 'assistant'; content: string }[] = []) =>
+    fetchApi<{ success: boolean; data: { content: string; role: 'assistant' } }>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, history }),
+    }),
+};
+
 export default authApi;
 

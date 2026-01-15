@@ -1,6 +1,8 @@
 'use client';
 
+import AIChatbot from '@/components/dashboard/AIChatbot';
 import Sidebar from '@/components/dashboard/Sidebar';
+import { AIAdvisorProvider } from '@/contexts/AIAdvisorContext';
 import { useAuth } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -33,11 +35,14 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen flex">
-      <Sidebar />
-      <main className="flex-1 min-w-0 w-full lg:ml-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
-        {children}
-      </main>
-    </div>
+    <AIAdvisorProvider>
+      <div className="min-h-screen flex">
+        <Sidebar />
+        <main className="flex-1 min-w-0 w-full lg:ml-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 relative">
+          {children}
+          <AIChatbot />
+        </main>
+      </div>
+    </AIAdvisorProvider>
   );
 }

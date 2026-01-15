@@ -1,25 +1,31 @@
-'use client';
+"use client";
 
+import ReportButton from '@/components/reports/ReportButton';
+import TransactionsPDF from '@/components/reports/TransactionsPDF';
 import {
-  categoriesApi,
-  incomeRulesApi,
-  transactionsApi,
-  type Category,
-  type IncomeRule,
-  type Transaction,
-  type TransactionFilters
+    categoriesApi,
+    incomeRulesApi,
+    transactionsApi,
+    type Category,
+    type IncomeRule,
+    type Transaction,
+    type TransactionFilters
 } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { generateTransactionsExcel } from '@/lib/excelGenerators';
+import { pdf } from '@react-pdf/renderer';
+import { saveAs } from 'file-saver';
 import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  ChevronLeft,
-  ChevronRight,
-  Filter,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-  X
+    ArrowDownCircle,
+    ArrowUpCircle,
+    ChevronLeft,
+    ChevronRight,
+    Filter,
+    Loader2,
+    Pencil,
+    Plus,
+    Trash2,
+    X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -445,6 +451,7 @@ function DeleteModal({
 }
 
 export default function TransactionsPage() {
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [rules, setRules] = useState<IncomeRule[]>([]);
@@ -456,6 +463,81 @@ export default function TransactionsPage() {
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [filters, setFilters] = useState<TransactionFilters>({ page: 1, limit: 10 });
   const [showFilters, setShowFilters] = useState(false);
+
+  // Helper to fetch all transactions for reports
+  const fetchAllForReport = async () => {
+    try {
+      // Fetch without pagination limit to get all records for the report
+      const reportFilters = { ...filters, limit: 1000, page: 1 };
+      const res = await transactionsApi.getAll(reportFilters);
+      return res.data;
+    } catch (err) {
+      console.error('Error fetching data for report:', err);
+      return transactions; // Fallback to current page
+    }
+  };
+
+  const handleGeneratePDF = async () => {
+    const allData = await fetchAllForReport();
+    const period = filters.startDate && filters.endDate 
+      ? `${new Date(filters.startDate).toLocaleDateString('pt-BR')} - ${new Date(filters.endDate).toLocaleDateString('pt-BR')}`
+      : 'Período Completo';
+
+    const income = allData.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + Number(t.amount), 0);
+    const expense = allData.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + Number(t.amount), 0);
+
+    const doc = (
+      <TransactionsPDF
+        userName={user?.name || 'Usuário'}
+        generatedAt={new Date()}
+        period={period}
+        transactions={allData.map(t => ({
+          id: t.id,
+          date: t.date,
+          description: t.description,
+          category: t.category?.name || t.incomeRule?.name || 'Sem categoria',
+          amount: Number(t.amount),
+          type: t.type
+        }))}
+        totals={{
+          income,
+          expense,
+          balance: income - expense,
+          count: allData.length
+        }}
+      />
+    );
+
+    const blob = await pdf(doc).toBlob();
+    saveAs(blob, `Kaptal_Extrato_${period.replace(/\s/g, '_')}.pdf`);
+  };
+
+  const handleGenerateExcel = async () => {
+    const allData = await fetchAllForReport();
+    const period = filters.startDate && filters.endDate 
+      ? `${new Date(filters.startDate).toLocaleDateString('pt-BR')} - ${new Date(filters.endDate).toLocaleDateString('pt-BR')}`
+      : 'Período Completo';
+
+    const income = allData.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + Number(t.amount), 0);
+    const expense = allData.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + Number(t.amount), 0);
+
+    generateTransactionsExcel({
+      userName: user?.name || 'Usuário',
+      period,
+      transactions: allData.map(t => ({
+        date: t.date,
+        description: t.description,
+        category: t.category?.name || t.incomeRule?.name || 'Sem categoria',
+        type: t.type,
+        amount: Number(t.amount)
+      })),
+      totals: {
+        income,
+        expense,
+        balance: income - expense
+      }
+    });
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -525,13 +607,20 @@ export default function TransactionsPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Transações</h1>
           <p className="opacity-60 text-sm sm:text-base">Gerencie suas receitas e despesas</p>
         </div>
-        <button
-          onClick={() => { setEditTransaction(null); setIsModalOpen(true); }}
-          className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto shadow-emerald-500/10"
-        >
-          <Plus className="w-5 h-5" />
-          Nova Transação
-        </button>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <ReportButton
+            onGeneratePDF={handleGeneratePDF}
+            onGenerateExcel={handleGenerateExcel}
+            label="Relatório"
+          />
+          <button
+            onClick={() => { setEditTransaction(null); setIsModalOpen(true); }}
+            className="btn-primary flex items-center justify-center gap-2 flex-1 sm:flex-initial shadow-emerald-500/10"
+          >
+            <Plus className="w-5 h-5" />
+            Nova Transação
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

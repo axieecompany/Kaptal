@@ -1,6 +1,7 @@
 'use client';
 
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAIAdvisor } from '@/contexts/AIAdvisorContext';
 import { useAuth } from '@/lib/auth';
 import {
   ArrowLeftRight,
@@ -9,12 +10,14 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  FileText,
   HelpCircle,
   LayoutDashboard,
   LogOut,
   Menu,
   PiggyBank,
   Scale,
+  Sparkles,
   Target,
   TrendingUp,
   UserCircle,
@@ -25,46 +28,49 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
-const navGroups = [
-  {
-    title: 'Poupador',
-    id: 'poupador',
-    icon: PiggyBank,
-    items: [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/dashboard/transactions', label: 'Transações', icon: ArrowLeftRight },
-      { href: '/dashboard/goals', label: 'Gastos', icon: Target },
-      { href: '/dashboard/savings', label: 'Metas', icon: PiggyBank },
-      { href: '/dashboard/simulator', label: 'Simulador', icon: Calculator },
-      { href: '/dashboard/profile', label: 'Perfil', icon: UserCircle },
-    ]
-  },
-  {
-    title: 'Investidor',
-    id: 'investidor',
-    icon: TrendingUp,
-    items: [
-      { href: '/dashboard/stocks', label: 'Ações', icon: TrendingUp },
-      { href: '/dashboard/patrimony', label: 'Patrimônio', icon: Wallet },
-    ]
-  },
-  {
-    title: 'Ajuda',
-    id: 'ajuda',
-    icon: HelpCircle,
-    items: [
-      { href: '/dashboard/help', label: 'Dúvidas', icon: HelpCircle },
-      { href: '/dashboard/terms', label: 'Termos de Uso', icon: Scale },
-    ]
-  }
-];
-
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { toggleAdvisor } = useAIAdvisor();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['poupador', 'investidor']));
+
+  const navGroups = [
+    {
+      title: 'Poupador',
+      id: 'poupador',
+      icon: PiggyBank,
+      items: [
+        { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { href: '/dashboard/transactions', label: 'Transações', icon: ArrowLeftRight },
+        { href: '/dashboard/goals', label: 'Gastos', icon: Target },
+        { href: '/dashboard/reports', label: 'Relatórios', icon: FileText },
+        { href: '/dashboard/savings', label: 'Metas', icon: PiggyBank },
+        { href: '/dashboard/simulator', label: 'Simulador', icon: Calculator },
+        { onClick: toggleAdvisor, label: 'Kaptal Advisor', icon: Sparkles, premium: true },
+        { href: '/dashboard/profile', label: 'Perfil', icon: UserCircle },
+      ]
+    },
+    {
+      title: 'Investidor',
+      id: 'investidor',
+      icon: TrendingUp,
+      items: [
+        { href: '/dashboard/stocks', label: 'Ações', icon: TrendingUp },
+        { href: '/dashboard/patrimony', label: 'Patrimônio', icon: Wallet },
+      ]
+    },
+    {
+      title: 'Ajuda',
+      id: 'ajuda',
+      icon: HelpCircle,
+      items: [
+        { href: '/dashboard/help', label: 'Dúvidas', icon: HelpCircle },
+        { href: '/dashboard/terms', label: 'Termos de Uso', icon: Scale },
+      ]
+    }
+  ];
 
   const toggleGroup = (id: string) => {
     if (isCollapsed) return;
@@ -154,28 +160,56 @@ export default function Sidebar() {
                 {/* Group Items */}
                 {(expandedGroups.has(group.id) || isCollapsed) && (
                   <div className="space-y-1">
-                    {group.items.map((item) => {
-                      const isActive = pathname === item.href || 
-                        (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                    {group.items.map((item, idx) => {
+                      const isActive = item.href ? (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))) : false;
                       const Icon = item.icon;
+                      const commonClasses = `
+                        flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left
+                        ${isCollapsed ? 'justify-center' : ''}
+                        ${isActive 
+                          ? 'bg-primary-500/20 text-primary-500 font-medium' 
+                          : 'opacity-60 hover:bg-primary-500/5 hover:opacity-100'}
+                        ${item.premium ? 'text-accent-500' : ''}
+                      `;
                       
+                      if (item.href) {
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setIsOpen(false)}
+                            className={commonClasses}
+                            title={isCollapsed ? item.label : ''}
+                          >
+                            <Icon className="w-5 h-5 shrink-0" />
+                            {!isCollapsed && (
+                              <div className="flex items-center justify-between flex-1">
+                                <span>{item.label}</span>
+                                {item.premium && <Sparkles className="w-3 h-3 text-accent-500" />}
+                              </div>
+                            )}
+                          </Link>
+                        );
+                      }
+
                       return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setIsOpen(false)}
-                          className={`
-                            flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                            ${isCollapsed ? 'justify-center' : ''}
-                            ${isActive 
-                              ? 'bg-primary-500/20 text-primary-500 font-medium' 
-                              : 'opacity-60 hover:bg-primary-500/5 hover:opacity-100'}
-                          `}
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            if (item.onClick) item.onClick();
+                            setIsOpen(false);
+                          }}
+                          className={commonClasses}
                           title={isCollapsed ? item.label : ''}
                         >
                           <Icon className="w-5 h-5 shrink-0" />
-                          {!isCollapsed && <span>{item.label}</span>}
-                        </Link>
+                          {!isCollapsed && (
+                            <div className="flex items-center justify-between flex-1">
+                              <span>{item.label}</span>
+                              {item.premium && <Sparkles className="w-3 h-3 text-accent-500" />}
+                            </div>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
@@ -219,4 +253,3 @@ export default function Sidebar() {
     </>
   );
 }
-

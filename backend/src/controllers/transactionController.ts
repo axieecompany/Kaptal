@@ -20,7 +20,7 @@ const updateTransactionSchema = createTransactionSchema.partial();
 
 const listTransactionsSchema = z.object({
   page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  limit: z.coerce.number().min(1).max(10000).default(20),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   categoryId: z.string().uuid().optional(),

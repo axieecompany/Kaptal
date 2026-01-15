@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import aiRoutes from './aiRoutes.js';
 import authRoutes from './authRoutes.js';
 import categoryBudgetRoutes from './categoryBudgetRoutes.js';
 import categoryRoutes from './categoryRoutes.js';
@@ -32,6 +33,7 @@ router.use('/income-rules', incomeRuleRoutes);
 router.use('/savings-goals', savingsGoalRoutes);
 router.use('/holdings', holdingRoutes);
 router.use('/dividends', dividendRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;
 

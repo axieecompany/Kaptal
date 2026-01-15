@@ -1,10 +1,16 @@
 "use client";
 
+import ReportButton from '@/components/reports/ReportButton';
+import SavingsPDF from '@/components/reports/SavingsPDF';
 import {
     savingsGoalsApi,
     type CreateSavingsGoalData,
     type SavingsGoal
 } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { generateSavingsExcel } from '@/lib/excelGenerators';
+import { pdf } from '@react-pdf/renderer';
+import { saveAs } from 'file-saver';
 import {
     Calendar,
     Check,
@@ -65,6 +71,7 @@ function getStatusText(status: string): string {
 }
 
 export default function SavingsPage() {
+  const { user } = useAuth();
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -86,6 +93,64 @@ export default function SavingsPage() {
   });
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');
+
+  // Report generation handlers
+  const handleGeneratePDF = async () => {
+    const totals = {
+      totalTarget: goals.reduce((acc, g) => acc + g.targetAmount, 0),
+      totalSaved: goals.reduce((acc, g) => acc + g.currentAmount, 0),
+      activeGoals: goals.filter(g => !g.isCompleted).length,
+      completedGoals: goals.filter(g => g.isCompleted).length,
+    };
+
+    const doc = (
+      <SavingsPDF
+        userName={user?.name || 'Usuário'}
+        generatedAt={new Date()}
+        goals={goals.map(g => ({
+          ...g,
+          targetAmount: Number(g.targetAmount),
+          currentAmount: Number(g.currentAmount),
+          remaining: Number(g.targetAmount) - Number(g.currentAmount),
+          deposits: (g as any).deposits?.map((d: any) => ({
+            ...d,
+            amount: Number(d.amount)
+          })) || []
+        }))}
+        totals={totals}
+      />
+    );
+
+    const blob = await pdf(doc).toBlob();
+    saveAs(blob, `Kaptal_Metas_Economia.pdf`);
+  };
+
+  const handleGenerateExcel = async () => {
+    generateSavingsExcel({
+      userName: user?.name || 'Usuário',
+      goals: goals.map(g => ({
+        name: g.name,
+        icon: g.icon,
+        targetAmount: Number(g.targetAmount),
+        currentAmount: Number(g.currentAmount),
+        remaining: Number(g.targetAmount) - Number(g.currentAmount),
+        progress: g.progress,
+        deadline: g.deadline,
+        monthlyRequired: g.monthlyRequired,
+        deposits: (g as any).deposits?.map((d: any) => ({
+          date: d.date,
+          amount: Number(d.amount),
+          note: d.note || ''
+        })) || []
+      })),
+      totals: {
+        totalTarget: goals.reduce((acc, g) => acc + g.targetAmount, 0),
+        totalSaved: goals.reduce((acc, g) => acc + g.currentAmount, 0),
+        activeGoals: goals.filter(g => !g.isCompleted).length,
+        completedGoals: goals.filter(g => g.isCompleted).length,
+      }
+    });
+  };
 
   const loadGoals = async () => {
     try {
@@ -200,15 +265,22 @@ export default function SavingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Metas de Economia</h1>
-          <p className="opacity-60 text-sm sm:text-base">Defina objetivos e acompanhe seu progresso</p>
+          <p className="opacity-60 text-sm sm:text-base">Poupe dinheiro para seus objetivos</p>
         </div>
-        <button
-          onClick={() => setShowNewGoalModal(true)}
-          className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center shadow-emerald-500/10"
-        >
-          <Plus className="w-5 h-5" />
-          Nova Meta
-        </button>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <ReportButton
+            onGeneratePDF={handleGeneratePDF}
+            onGenerateExcel={handleGenerateExcel}
+            label="Relatório"
+          />
+          <button
+            onClick={() => setShowNewGoalModal(true)}
+            className="btn-primary flex items-center justify-center gap-2 flex-1 sm:flex-initial shadow-emerald-500/10"
+          >
+            <Plus className="w-5 h-5" />
+            Nova Meta
+          </button>
+        </div>
       </div>
 
       {/* Error Alert */}

@@ -1,17 +1,23 @@
 'use client';
 
+import DashboardPDF from '@/components/reports/DashboardPDF';
+import ReportButton from '@/components/reports/ReportButton';
 import { statsApi, type InsightsResponse, type MonthlyHistoryResponse, type OverviewResponse } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { generateDashboardExcel } from '@/lib/excelGenerators';
+import { pdf } from '@react-pdf/renderer';
+import { saveAs } from 'file-saver';
 import {
-  AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
-  CreditCard,
-  Flame,
-  Loader2,
-  Target,
-  TrendingDown,
-  TrendingUp,
-  Wallet
+    AlertTriangle,
+    ArrowDownRight,
+    ArrowUpRight,
+    CreditCard,
+    Flame,
+    Loader2,
+    Target,
+    TrendingDown,
+    TrendingUp,
+    Wallet
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -30,11 +36,14 @@ function formatDate(dateString: string): string {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [overview, setOverview] = useState<OverviewResponse['data'] | null>(null);
   const [monthly, setMonthly] = useState<MonthlyHistoryResponse['data'] | null>(null);
   const [insights, setInsights] = useState<InsightsResponse['data'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const currentMonth = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   useEffect(() => {
     async function loadData() {
@@ -55,6 +64,59 @@ export default function DashboardPage() {
     }
     loadData();
   }, []);
+
+  // Generate PDF report
+  const handleGeneratePDF = async () => {
+    if (!overview) return;
+    
+    const doc = (
+      <DashboardPDF
+        userName={user?.name || 'Usuário'}
+        generatedAt={new Date()}
+        month={currentMonth}
+        overview={{
+          balance: overview.balance,
+          income: overview.income,
+          expense: overview.expense,
+        }}
+        insights={insights ? {
+          daysUntilBroke: insights.daysUntilBroke,
+          dailyAverage: insights.dailyAverage,
+          endOfMonthProjection: insights.endOfMonthProjection,
+          pendingInstallments: insights.pendingInstallments,
+          savingsStreak: insights.savingsStreak,
+        } : undefined}
+        monthlyHistory={monthly || []}
+        recentTransactions={overview.recentTransactions || []}
+      />
+    );
+    
+    const blob = await pdf(doc).toBlob();
+    saveAs(blob, `Kaptal_Dashboard_${currentMonth.replace(' ', '_')}.pdf`);
+  };
+
+  // Generate Excel report
+  const handleGenerateExcel = async () => {
+    if (!overview) return;
+    
+    generateDashboardExcel({
+      userName: user?.name || 'Usuário',
+      month: currentMonth,
+      overview: {
+        balance: overview.balance,
+        income: overview.income,
+        expense: overview.expense,
+      },
+      monthlyHistory: monthly || [],
+      recentTransactions: (overview.recentTransactions || []).map(tx => ({
+        date: tx.date,
+        description: tx.description,
+        category: tx.category?.name || 'Sem categoria',
+        amount: Number(tx.amount),
+        type: tx.type,
+      })),
+    });
+  };
 
   if (isLoading) {
     return (
@@ -79,9 +141,16 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="opacity-60">Visão geral das suas finanças</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="opacity-60">Visão geral das suas finanças</p>
+        </div>
+        <ReportButton
+          onGeneratePDF={handleGeneratePDF}
+          onGenerateExcel={handleGenerateExcel}
+          label="Relatório"
+        />
       </div>
 
       {/* Stats Cards */}

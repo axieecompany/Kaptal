@@ -1,30 +1,36 @@
 "use client";
 
+import GoalsPDF from '@/components/reports/GoalsPDF';
+import ReportButton from '@/components/reports/ReportButton';
 import React from 'react';
 
 import {
-  categoryBudgetsApi,
-  incomeRulesApi,
-  type BudgetsData,
-  type CreateIncomeRuleData,
-  type IncomeRule,
-  type RuleItem
+    categoryBudgetsApi,
+    incomeRulesApi,
+    type BudgetsData,
+    type CreateIncomeRuleData,
+    type IncomeRule,
+    type RuleItem
 } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { generateGoalsExcel } from '@/lib/excelGenerators';
+import { pdf } from '@react-pdf/renderer';
+import { saveAs } from 'file-saver';
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  DollarSign,
-  Edit2,
-  Loader2,
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  Trash2,
-  TrendingUp,
-  Wallet,
-  X
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
+    DollarSign,
+    Edit2,
+    Loader2,
+    Plus,
+    RefreshCw,
+    RotateCcw,
+    Trash2,
+    TrendingUp,
+    Wallet,
+    X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -54,6 +60,7 @@ function formatCurrency(value: number): string {
 }
 
 export default function GoalsPage() {
+  const { user } = useAuth();
   const [budgetsData, setBudgetsData] = useState<BudgetsData | null>(null);
   const [incomeRules, setIncomeRules] = useState<IncomeRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +68,88 @@ export default function GoalsPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [baseIncome, setBaseIncome] = useState(0);
+
+  // ... (existing state)
+
+  // Report generation handlers
+  const handleGeneratePDF = async () => {
+    const monthStr = currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    
+    // Prepare categories data for PDF
+    const categoriesForPDF = incomeRules.map(rule => {
+      const spendingData = ruleSpending.get(rule.id);
+      const spent = spendingData?.totalSpent || 0;
+      const budget = (baseIncome * rule.percentage) / 100;
+      const remaining = budget - spent;
+      const utilization = budget > 0 ? (spent / budget) * 100 : 0;
+      
+      return {
+        name: rule.name,
+        icon: rule.icon,
+        percentage: rule.percentage,
+        budget,
+        spent,
+        remaining,
+        utilizationPercentage: utilization,
+        subitems: rule.items.map(item => ({
+          name: item.name,
+          spent: subItemSpending.get(item.id)?.totalSpent || 0
+        }))
+      };
+    });
+
+    const doc = (
+      <GoalsPDF
+        userName={user?.name || 'Usuário'}
+        generatedAt={new Date()}
+        month={monthStr}
+        baseIncome={baseIncome}
+        categories={categoriesForPDF}
+        totals={{
+          totalBudget: baseIncome,
+          totalSpent: calculatedTotals.totalSpent,
+          totalPercentage: calculatedTotals.percentage
+        }}
+      />
+    );
+
+    const blob = await pdf(doc).toBlob();
+    saveAs(blob, `Kaptal_Orcamento_${monthStr.replace(' ', '_')}.pdf`);
+  };
+
+  const handleGenerateExcel = async () => {
+    const monthStr = currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    
+    generateGoalsExcel({
+      userName: user?.name || 'Usuário',
+      month: monthStr,
+      baseIncome,
+      categories: incomeRules.map(rule => {
+        const spendingData = ruleSpending.get(rule.id);
+        const spent = spendingData?.totalSpent || 0;
+        const budget = (baseIncome * rule.percentage) / 100;
+        const remaining = budget - spent;
+        const utilization = budget > 0 ? (spent / budget) * 100 : 0;
+        
+        return {
+          name: rule.name,
+          icon: rule.icon,
+          percentage: rule.percentage,
+          budget,
+          spent,
+          remaining,
+          utilizationPercentage: utilization
+        };
+      }),
+      totals: {
+        totalBudget: baseIncome,
+        totalSpent: calculatedTotals.totalSpent,
+        totalRemaining: baseIncome - calculatedTotals.totalSpent
+      }
+    });
+  };
+
+  // ... (existing logic)
   const [hasRulesForCurrentMonth, setHasRulesForCurrentMonth] = useState(false);
 
   // Modals
@@ -441,7 +530,7 @@ export default function GoalsPage() {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 justify-end">
+      <div className="flex flex-wrap gap-3 justify-end items-center">
         <button
           onClick={() => {
             setTempIncome(baseIncome.toString());
@@ -478,6 +567,11 @@ export default function GoalsPage() {
             </button>
           </>
         )}
+        <ReportButton
+          onGeneratePDF={handleGeneratePDF}
+          onGenerateExcel={handleGenerateExcel}
+          label="Relatório"
+        />
       </div>
 
       {/* Summary Table */}
