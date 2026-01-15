@@ -419,6 +419,7 @@ export interface TransactionFilters {
   endDate?: string;
   categoryId?: string;
   type?: 'INCOME' | 'EXPENSE';
+  search?: string;
 }
 
 export interface TransactionsResponse {

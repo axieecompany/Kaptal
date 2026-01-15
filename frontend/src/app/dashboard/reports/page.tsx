@@ -454,7 +454,7 @@ function ReportCard({ title, icon, description, onPdf, onExcel, isLoading }: any
         <button
           onClick={onPdf}
           disabled={isLoading}
-          className="text-xs font-bold py-2 px-3 rounded-lg bg-current/5 hover:bg-current/10 flex items-center justify-between transition-all"
+          className="text-xs font-bold py-2 px-3 rounded-lg text-red-500 bg-red-500/5 hover:bg-red-500/10 flex items-center justify-between transition-all"
         >
           <span>Versão PDF</span>
           <Download className="w-3.5 h-3.5" />

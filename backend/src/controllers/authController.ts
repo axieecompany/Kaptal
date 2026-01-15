@@ -164,6 +164,7 @@ export async function me(req: Request, res: Response): Promise<void> {
         email: true,
         name: true,
         emailVerified: true,
+        avatarUrl: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -183,6 +184,50 @@ export async function me(req: Request, res: Response): Promise<void> {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro ao buscar usuário';
+    res.status(500).json({
+      success: false,
+      message,
+    });
+  }
+}
+
+export async function updateProfile(req: Request, res: Response): Promise<void> {
+  try {
+    const { prisma } = await import('../config/database.js');
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Não autorizado' });
+      return;
+    }
+
+    const { name, avatarUrl } = req.body;
+
+    const updateData: { name?: string; avatarUrl?: string } = {};
+    if (name !== undefined) updateData.name = name;
+    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Perfil atualizado com sucesso.',
+      data: { user },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erro ao atualizar perfil';
     res.status(500).json({
       success: false,
       message,

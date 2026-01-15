@@ -5,8 +5,11 @@ import {
     Calculator,
     ChevronLeft,
     ChevronRight,
+    FileText,
     LayoutDashboard,
     PiggyBank,
+    Scale,
+    Sparkles,
     Target,
     TrendingUp,
     Wallet
@@ -32,7 +35,7 @@ const poupadorSlides = [
     details: [
       'Adicione receitas (salário, freelances, vendas) e despesas.',
       'Categorize cada transação para entender onde seu dinheiro vai.',
-      'Filtre por período, categoria ou tipo (receita/despesa).',
+      'Filtre por período, tipo ou busque por descrição.',
       'Edite ou exclua transações a qualquer momento.',
     ]
   },
@@ -45,6 +48,39 @@ const poupadorSlides = [
       'Veja o gráfico de pizza mostrando a distribuição dos seus gastos.',
       'Compare o gasto real com o planejado para cada categoria.',
       'Receba alertas quando estiver perto de estourar o limite.',
+    ]
+  },
+  {
+    title: 'Resumos Inteligentes',
+    icon: Scale,
+    description: 'Importe extratos bancários e gere análises instantâneas.',
+    details: [
+      'Faça upload de arquivos CSV do seu banco (Nubank, Inter, etc.).',
+      'Veja gráficos de Receitas, Despesas e Volume Financeiro semanal.',
+      'A IA categoriza automaticamente suas transações.',
+      'No plano Pro, salve o histórico de cada mês para consulta futura.',
+    ]
+  },
+  {
+    title: 'Kaptal Advisor',
+    icon: Sparkles,
+    description: 'Seu consultor financeiro com inteligência artificial.',
+    details: [
+      'Converse com a IA sobre suas finanças em tempo real.',
+      'Receba dicas personalizadas de economia baseadas nos seus gastos.',
+      'A IA conhece suas metas, saldo e histórico de transações.',
+      'Pergunte quanto pode gastar, simule cenários e tire dúvidas.',
+    ]
+  },
+  {
+    title: 'Relatórios',
+    icon: FileText,
+    description: 'Exporte seus dados em PDF e Excel profissionais.',
+    details: [
+      'Gere relatórios em PDF com gráficos e resumos visuais.',
+      'Exporte listas de transações em Excel para análise detalhada.',
+      'Filtros aplicados são refletidos nos relatórios gerados.',
+      'Ideal para controle pessoal, contabilidade ou declaração de IR.',
     ]
   },
   {

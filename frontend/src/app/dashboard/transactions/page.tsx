@@ -3,29 +3,30 @@
 import ReportButton from '@/components/reports/ReportButton';
 import TransactionsPDF from '@/components/reports/TransactionsPDF';
 import {
-    categoriesApi,
-    incomeRulesApi,
-    transactionsApi,
-    type Category,
-    type IncomeRule,
-    type Transaction,
-    type TransactionFilters
+  categoriesApi,
+  incomeRulesApi,
+  transactionsApi,
+  type Category,
+  type IncomeRule,
+  type Transaction,
+  type TransactionFilters
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { generateTransactionsExcel } from '@/lib/excelGenerators';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 import {
-    ArrowDownCircle,
-    ArrowUpCircle,
-    ChevronLeft,
-    ChevronRight,
-    Filter,
-    Loader2,
-    Pencil,
-    Plus,
-    Trash2,
-    X
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -685,19 +686,17 @@ export default function TransactionsPage() {
               />
             </div>
             <div>
-              <label className="input-label">Categoria</label>
-              <select
-                value={filters.categoryId || ''}
-                onChange={(e) => handleFilterChange('categoryId', e.target.value || undefined)}
-                className="input-field"
-              >
-                <option value="" className="bg-[var(--sidebar-bg)]">Todas</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id} className="bg-[var(--sidebar-bg)] font-sans">
-                    {cat.icon} {cat.name}
-                  </option>
-                ))}
-              </select>
+              <label className="input-label">Buscar Transação</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
+                <input
+                  type="text"
+                  value={filters.search || ''}
+                  onChange={(e) => handleFilterChange('search', e.target.value || undefined)}
+                  className="input-field !border-none pl-10"
+                  placeholder="Buscar por descrição..."
+                />
+              </div>
             </div>
           </div>
         )}

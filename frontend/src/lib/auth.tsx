@@ -2,7 +2,7 @@
 
 import { authApi } from '@/lib/api';
 import type { User } from '@/types';
-import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +10,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,26 +20,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchUser = useCallback(async (authToken: string) => {
+    try {
+      const response = await authApi.me(authToken);
+      if (response.data?.user) {
+        setUser(response.data.user);
+        setToken(authToken);
+      }
+    } catch {
+      localStorage.removeItem('token');
+      setToken(null);
+      setUser(null);
+    }
+  }, []);
+
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
-      authApi.me(storedToken)
-        .then((response) => {
-          if (response.data?.user) {
-            setUser(response.data.user);
-            setToken(storedToken);
-          }
-        })
-        .catch(() => {
-          localStorage.removeItem('token');
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+      fetchUser(storedToken).finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchUser]);
 
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem('token', newToken);
@@ -52,8 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = useCallback(async () => {
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      await fetchUser(storedToken);
+    }
+  }, [fetchUser]);
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

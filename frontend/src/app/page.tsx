@@ -143,6 +143,88 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <section className="py-20 px-6 relative" id="pricing">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 mb-4">
+              <Zap className="w-4 h-4" />
+              <span className="text-sm font-semibold">Planos</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Escolha o plano ideal
+            </h2>
+            <p className="opacity-60 max-w-xl mx-auto">
+              Comece gratuitamente e faça upgrade quando precisar de mais recursos.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Free Plan */}
+            <div className="glass-card p-8 hover:scale-[1.02] transition-transform duration-300">
+              <h3 className="text-2xl font-bold mb-2">Gratuito</h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-4xl font-black text-primary-500">R$ 0</span>
+                <span className="opacity-40">/mês</span>
+              </div>
+              <p className="opacity-60 text-sm mb-6">Perfeito para começar a organizar.</p>
+              
+              <ul className="space-y-3 mb-8">
+                {['Dashboard Completo', 'Transações Ilimitadas', 'Metas de Economia', 'Simulador de Juros', 'Cotações de Ações'].map((f, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <span className="text-emerald-500 text-[10px]">✓</span>
+                    </div>
+                    {f}
+                  </li>
+                ))}
+                {['Relatórios PDF/Excel', 'Histórico de Resumos', 'Suporte Prioritário'].map((f, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm opacity-40">
+                    <div className="w-5 h-5 rounded-full bg-red-500/10 flex items-center justify-center">
+                      <span className="text-red-400 text-[10px]">✕</span>
+                    </div>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              
+              <Link href="/register" className="btn-secondary w-full text-center block">
+                Começar Grátis
+              </Link>
+            </div>
+
+            {/* Premium Plan */}
+            <div className="glass-card p-8 border-2 border-amber-500/50 shadow-lg shadow-amber-500/10 relative hover:scale-[1.02] transition-transform duration-300 overflow-hidden">
+              <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-amber-500 text-white text-xs font-bold">
+                Popular
+              </div>
+              
+              <h3 className="text-2xl font-bold mb-2">Premium</h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-4xl font-black text-amber-500">R$ 29,90</span>
+                <span className="opacity-40">/mês</span>
+              </div>
+              <p className="opacity-60 text-sm mb-6">Todas as ferramentas para dominar suas finanças.</p>
+              
+              <ul className="space-y-3 mb-8">
+                {['Dashboard Completo', 'Transações Ilimitadas', 'Metas de Economia', 'Kaptal Advisor Ilimitado', 'Relatórios PDF/Excel', 'Histórico de Resumos', 'Suporte Prioritário'].map((f, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <span className="text-emerald-500 text-[10px]">✓</span>
+                    </div>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              
+              <Link href="/register" className="w-full py-3 px-6 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-center block transition-all shadow-lg shadow-amber-500/30">
+                Fazer Upgrade
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto glass-card p-12 text-center relative overflow-hidden">

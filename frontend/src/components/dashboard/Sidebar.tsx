@@ -4,25 +4,26 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAIAdvisor } from '@/contexts/AIAdvisorContext';
 import { useAuth } from '@/lib/auth';
 import {
-  ArrowLeftRight,
-  Calculator,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  FileText,
-  HelpCircle,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  PiggyBank,
-  Scale,
-  Sparkles,
-  Target,
-  TrendingUp,
-  UserCircle,
-  Wallet,
-  X
+    ArrowLeftRight,
+    Calculator,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
+    Crown,
+    FileText,
+    HelpCircle,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    PiggyBank,
+    Scale,
+    Sparkles,
+    Target,
+    TrendingUp,
+    UserCircle,
+    Wallet,
+    X
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -46,6 +47,7 @@ export default function Sidebar() {
         { href: '/dashboard/transactions', label: 'Transações', icon: ArrowLeftRight },
         { href: '/dashboard/goals', label: 'Gastos', icon: Target },
         { href: '/dashboard/reports', label: 'Relatórios', icon: FileText },
+        { href: '/dashboard/summaries', label: 'Resumos', icon: Scale },
         { href: '/dashboard/savings', label: 'Metas', icon: PiggyBank },
         { href: '/dashboard/simulator', label: 'Simulador', icon: Calculator },
         { onClick: toggleAdvisor, label: 'Kaptal Advisor', icon: Sparkles, premium: true },
@@ -66,6 +68,7 @@ export default function Sidebar() {
       id: 'ajuda',
       icon: HelpCircle,
       items: [
+        { href: '/dashboard/plans', label: 'Planos', icon: Crown },
         { href: '/dashboard/help', label: 'Dúvidas', icon: HelpCircle },
         { href: '/dashboard/terms', label: 'Termos de Uso', icon: Scale },
       ]

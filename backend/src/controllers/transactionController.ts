@@ -26,6 +26,7 @@ const listTransactionsSchema = z.object({
   categoryId: z.string().uuid().optional(),
   incomeRuleId: z.string().uuid().optional(),
   type: z.enum(['INCOME', 'EXPENSE']).optional(),
+  search: z.string().optional(),
 });
 
 export async function getTransactions(req: Request, res: Response): Promise<void> {
@@ -46,7 +47,7 @@ export async function getTransactions(req: Request, res: Response): Promise<void
       return;
     }
 
-    const { page, limit, startDate, endDate, categoryId, incomeRuleId, type } = validation.data;
+    const { page, limit, startDate, endDate, categoryId, incomeRuleId, type, search } = validation.data;
 
     const where: Prisma.TransactionWhereInput = { userId };
 
@@ -55,6 +56,7 @@ export async function getTransactions(req: Request, res: Response): Promise<void
     if (categoryId) where.categoryId = categoryId;
     if (incomeRuleId) where.incomeRuleId = incomeRuleId;
     if (type) where.type = type;
+    if (search) where.description = { contains: search, mode: 'insensitive' };
 
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({

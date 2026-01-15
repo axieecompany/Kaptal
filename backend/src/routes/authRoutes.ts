@@ -13,5 +13,6 @@ router.post('/resend-code', authController.resendCode);
 
 // Protected routes
 router.get('/me', authMiddleware, authController.me);
+router.patch('/me', authMiddleware, authController.updateProfile);
 
 export default router;
