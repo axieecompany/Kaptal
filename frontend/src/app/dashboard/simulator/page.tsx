@@ -115,9 +115,9 @@ export default function SimulatorPage() {
         <p className="opacity-40 text-xs sm:text-sm font-bold uppercase tracking-wider mt-1">Planeje seu futuro financeiro</p>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-6 sm:gap-8 w-full max-w-full">
         {/* Sidebar Inputs */}
-        <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+        <div className="lg:col-span-1 space-y-4 sm:space-y-6 min-w-0">
           <div className="glass-card p-4 sm:p-6 space-y-5 sm:space-y-6">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Calculator className="w-5 h-5 text-primary-500" />
@@ -229,7 +229,7 @@ export default function SimulatorPage() {
         </div>
 
         {/* Main Content Areas */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-6 sm:space-y-8 min-w-0">
           {/* Summary Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             <div className="glass-card p-4 sm:p-6 border-l-4 border-primary-500 relative overflow-hidden">
@@ -263,7 +263,7 @@ export default function SimulatorPage() {
                </div>
             </div>
             
-            <div className="h-72 mt-4 relative flex gap-4">
+            <div className="h-72 mt-4 relative flex gap-4 min-w-0">
               {/* Y-axis labels */}
               <div className="flex flex-col justify-between h-[calc(100%-32px)] text-[10px] opacity-30 font-medium tabular-nums w-10 text-right">
                 {[...Array(5)].map((_, i) => {
