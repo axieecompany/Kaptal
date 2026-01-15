@@ -108,68 +108,68 @@ export default function SimulatorPage() {
   const maxVal = Math.max(totalBalance, 1);
 
   return (
-    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+    <div className="space-y-8 pb-12 animate-in fade-in duration-500 w-full max-w-full">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Simulador de Juros Compostos</h1>
-        <p className="opacity-60">Planeje seu futuro financeiro e veja seu dinheiro crescer</p>
+      <div className="py-2">
+        <h1 className="text-xl sm:text-2xl font-black tracking-tight">Simulador de Juros</h1>
+        <p className="opacity-40 text-xs sm:text-sm font-bold uppercase tracking-wider mt-1">Planeje seu futuro financeiro</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Sidebar Inputs */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="glass-card p-6 space-y-6">
+        <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+          <div className="glass-card p-4 sm:p-6 space-y-5 sm:space-y-6">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Calculator className="w-5 h-5 text-primary-500" />
               Parâmetros
             </h2>
             
             <div className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium opacity-60">Valor inicial</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase opacity-40 tracking-wider">Valor inicial</label>
                 <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors">R$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors text-sm font-bold">R$</span>
                   <input
                     type="number"
                     value={initialValue}
                     onChange={(e) => setInitialValue(e.target.value)}
-                    className="input-field pl-12"
+                    className="input-field pl-12 text-sm sm:text-base"
                     placeholder="0,00"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium opacity-60">Valor mensal</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase opacity-40 tracking-wider">Valor mensal</label>
                 <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors">R$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors text-sm font-bold">R$</span>
                   <input
                     type="number"
                     value={monthlyValue}
                     onChange={(e) => setMonthlyValue(e.target.value)}
-                    className="input-field pl-12"
+                    className="input-field pl-12 text-sm sm:text-base"
                     placeholder="0,00"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium opacity-60">Taxa de juros</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase opacity-40 tracking-wider">Taxa de juros</label>
                 <div className="flex gap-2">
-                  <div className="relative flex-1 group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors">%</span>
+                  <div className="relative flex-1 group min-w-0">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:text-primary-500 transition-colors text-sm font-bold">%</span>
                     <input
                       type="number"
                       value={interestRate}
                       onChange={(e) => setInterestRate(e.target.value)}
-                      className="input-field pl-10"
+                      className="input-field pl-10 text-sm sm:text-base w-full"
                       placeholder="0,00"
                     />
                   </div>
                   <select
                     value={rateType}
                     onChange={(e) => setRateType(e.target.value as any)}
-                    className="input-field w-auto px-4 py-3 cursor-pointer"
+                    className="input-field w-auto px-3 sm:px-4 py-3 cursor-pointer text-xs sm:text-sm font-bold uppercase tracking-wider shrink-0"
                   >
                     <option value="monthly" className="bg-[var(--sidebar-bg)] font-sans">Mensal</option>
                     <option value="annual" className="bg-[var(--sidebar-bg)] font-sans">Anual</option>
@@ -177,20 +177,20 @@ export default function SimulatorPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium opacity-60">Período</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase opacity-40 tracking-wider">Período</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     value={period}
                     onChange={(e) => setPeriod(e.target.value)}
-                    className="flex-1 input-field"
+                    className="flex-1 min-w-0 input-field text-sm sm:text-base"
                     placeholder="0"
                   />
                   <select
                     value={periodType}
                     onChange={(e) => setPeriodType(e.target.value as any)}
-                    className="input-field w-auto px-4 py-3 cursor-pointer"
+                    className="input-field w-auto px-3 sm:px-4 py-3 cursor-pointer text-xs sm:text-sm font-bold uppercase tracking-wider shrink-0"
                   >
                     <option value="months" className="bg-[var(--sidebar-bg)] font-sans">Meses</option>
                     <option value="years" className="bg-[var(--sidebar-bg)] font-sans">Anos</option>
@@ -220,9 +220,9 @@ export default function SimulatorPage() {
             </div>
           </div>
 
-          <div className="bg-primary-500/10 border border-primary-500/20 rounded-2xl p-4 flex gap-3">
+          <div className="bg-primary-500/5 border border-primary-500/10 rounded-2xl p-4 flex gap-3 overflow-hidden">
             <Info className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-            <p className="text-sm opacity-50 leading-relaxed">
+            <p className="text-xs sm:text-sm opacity-50 leading-relaxed font-medium flex-1 min-w-0">
               O cálculo de juros compostos com aportes mensais considera que os depósitos são realizados no final de cada mês.
             </p>
           </div>
@@ -231,34 +231,34 @@ export default function SimulatorPage() {
         {/* Main Content Areas */}
         <div className="lg:col-span-2 space-y-8">
           {/* Summary Stats */}
-          <div className="grid sm:grid-cols-3 gap-6">
-            <div className="glass-card p-6 border-l-4 border-primary-500 relative overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            <div className="glass-card p-4 sm:p-6 border-l-4 border-primary-500 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-              <p className="opacity-40 text-sm mb-1 uppercase tracking-wider font-semibold">Valor total final</p>
-              <p className="text-2xl font-bold tracking-tight">{formatCurrency(totalBalance)}</p>
+              <p className="opacity-40 text-[10px] sm:text-sm mb-1 uppercase tracking-wider font-black">Valor total final</p>
+              <p className="text-xl sm:text-2xl font-black tracking-tight tabular-nums">{formatCurrency(totalBalance)}</p>
             </div>
-            <div className="glass-card p-6 border-l-4 border-primary-500/40">
-              <p className="opacity-40 text-sm mb-1 uppercase tracking-wider font-semibold">Valor total investido</p>
-              <p className="text-xl font-bold tracking-tight">{formatCurrency(totalInvested)}</p>
+            <div className="glass-card p-4 sm:p-6 border-l-4 border-primary-500/40">
+              <p className="opacity-40 text-[10px] sm:text-sm mb-1 uppercase tracking-wider font-black">Total investido</p>
+              <p className="text-xl sm:text-2xl font-black tracking-tight tabular-nums">{formatCurrency(totalInvested)}</p>
             </div>
-            <div className="glass-card p-6 border-l-4 border-emerald-500">
-              <p className="opacity-40 text-sm mb-1 uppercase tracking-wider font-semibold">Total em juros</p>
-              <p className="text-xl font-bold text-emerald-500 tracking-tight">{formatCurrency(totalInterest)}</p>
+            <div className="glass-card p-4 sm:p-6 border-l-4 border-emerald-500">
+              <p className="opacity-40 text-[10px] sm:text-sm mb-1 uppercase tracking-wider font-black">Total em juros</p>
+              <p className="text-xl sm:text-2xl font-black text-emerald-500 tracking-tight tabular-nums">{formatCurrency(totalInterest)}</p>
             </div>
           </div>
 
           {/* Chart Section */}
-          <div className="glass-card p-8">
-            <div className="flex items-center justify-between mb-8">
-               <h3 className="text-lg font-semibold">Projeção de Crescimento</h3>
+          <div className="glass-card p-4 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+               <h3 className="text-base sm:text-lg font-black uppercase tracking-wider opacity-60">Projeção</h3>
                <div className="flex gap-4">
                  <div className="flex items-center gap-2">
                    <div className="w-3 h-3 rounded-sm bg-primary-500" />
-                   <span className="text-xs opacity-40">Investido</span>
+                   <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Investido</span>
                  </div>
                  <div className="flex items-center gap-2">
                    <div className="w-3 h-3 rounded-sm bg-emerald-500/40 border border-emerald-500/30" />
-                   <span className="text-xs opacity-40">Juros</span>
+                   <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Juros</span>
                  </div>
                </div>
             </div>
@@ -339,53 +339,61 @@ export default function SimulatorPage() {
           </div>
 
           {/* Breakdown Table */}
-          <div className="glass-card overflow-hidden">
-            <div className="px-4 sm:px-8 py-4 sm:py-6 thin-border-b flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold">Detalhamento Mensal</h3>
-              <div className="text-[10px] sm:text-xs opacity-40 italic hidden sm:block">
-                 Mostrando todos os {results.length} meses
-              </div>
+          <div className="glass-card overflow-hidden w-full max-w-full">
+            <div className="p-6 thin-border-b bg-current/[0.01]">
+              <h3 className="text-lg font-black flex items-center gap-2">
+                <Calculator className="w-5 h-5 text-primary-500" />
+                Detalhamento Mensal
+              </h3>
             </div>
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <table className="w-full text-left border-collapse min-w-[600px]">
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
+              <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead className="sticky top-0 z-10 bg-[var(--sidebar-bg)] backdrop-blur">
-                  <tr className="text-current opacity-30 text-[9px] sm:text-[10px] uppercase font-bold tracking-widest border-b border-current/[0.05]">
-                    <th className="py-3 sm:py-4 px-4 sm:px-8">Mês</th>
-                    <th className="py-3 sm:py-4 px-4 sm:px-8">Juros</th>
-                    <th className="py-3 sm:py-4 px-4 sm:px-8 text-right">Acumulado</th>
-                    <th className="py-3 sm:py-4 px-4 sm:px-8 text-right">Investido</th>
-                    <th className="py-3 sm:py-4 px-4 sm:px-8 text-right">Saldo</th>
+                  <tr className="text-current opacity-30 text-[10px] uppercase font-black tracking-widest border-b border-current/[0.05]">
+                    <th className="py-4 px-3 sm:px-6 whitespace-nowrap">Mês</th>
+                    <th className="py-4 px-3 sm:px-6 whitespace-nowrap">Juros</th>
+                    <th className="py-4 px-3 sm:px-6 text-right whitespace-nowrap">Acumulado</th>
+                    <th className="py-4 px-3 sm:px-6 text-right whitespace-nowrap">Investido</th>
+                    <th className="py-4 px-3 sm:px-6 text-right whitespace-nowrap">Saldo</th>
                   </tr>
                 </thead>
                 <tbody className="thin-divide">
                   {results.map((row, idx) => {
-                    const isLast = idx === results.length - 1 && results.length > 1;
+                    const isLast = idx === results.length - 1 && results.length > 1
                     return (
-                      <tr 
-                        key={row.month} 
+                      <tr
+                        key={row.month}
                         className={`group transition-colors ${
-                          isLast 
-                            ? "bg-primary-500/[0.03] border-t-2 border-primary-500/20" 
-                            : "hover:bg-primary-500/[0.02]"
+                          isLast ? "bg-primary-500/[0.03] border-t-2 border-primary-500/20" : "hover:bg-primary-500/[0.02]"
                         }`}
                       >
-                        <td className={`py-3 sm:py-4 px-4 sm:px-8 font-medium text-sm sm:text-base ${isLast ? "text-primary-500 font-black" : "opacity-60"}`}>
+                        <td
+                          className={`py-4 px-3 sm:px-6 font-medium text-sm whitespace-nowrap ${isLast ? "text-primary-500 font-black" : "opacity-60"}`}
+                        >
                           {row.month === 0 ? "Início" : isLast ? `FINAL` : `${row.month}`}
                         </td>
-                        <td className={`py-3 sm:py-4 px-4 sm:px-8 font-medium text-sm sm:text-base ${isLast ? "text-emerald-500 font-black" : "text-emerald-500"}`}>
+                        <td
+                          className={`py-4 px-3 sm:px-6 font-medium text-sm whitespace-nowrap ${isLast ? "text-emerald-500 font-black" : "text-emerald-500"}`}
+                        >
                           {row.month === 0 ? "-" : formatCurrency(row.interest)}
                         </td>
-                        <td className={`py-3 sm:py-4 px-4 sm:px-8 text-right tabular-nums text-sm sm:text-base ${isLast ? "opacity-80 font-bold" : "opacity-40"}`}>
+                        <td
+                          className={`py-4 px-3 sm:px-6 text-right tabular-nums text-sm whitespace-nowrap ${isLast ? "opacity-80 font-bold" : "opacity-40"}`}
+                        >
                           {row.month === 0 ? "-" : formatCurrency(row.totalInterest)}
                         </td>
-                        <td className={`py-3 sm:py-4 px-4 sm:px-8 text-right tabular-nums text-sm sm:text-base ${isLast ? "opacity-80 font-bold" : "opacity-40"}`}>
-                           {formatCurrency(row.totalInvested)}
+                        <td
+                          className={`py-4 px-3 sm:px-6 text-right tabular-nums text-sm whitespace-nowrap ${isLast ? "opacity-80 font-bold" : "opacity-40"}`}
+                        >
+                          {formatCurrency(row.totalInvested)}
                         </td>
-                        <td className={`py-3 sm:py-4 px-4 sm:px-8 text-right tabular-nums text-sm sm:text-base ${isLast ? "font-black text-base sm:text-lg" : "font-semibold"}`}>
+                        <td
+                          className={`py-4 px-3 sm:px-6 text-right tabular-nums text-sm whitespace-nowrap ${isLast ? "font-black text-base" : "font-semibold"}`}
+                        >
                           {formatCurrency(row.balance)}
                         </td>
                       </tr>
-                    );
+                    )
                   })}
                 </tbody>
               </table>
