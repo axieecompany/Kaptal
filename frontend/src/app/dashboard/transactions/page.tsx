@@ -1,25 +1,25 @@
 'use client';
 
 import {
-    categoriesApi,
-    incomeRulesApi,
-    transactionsApi,
-    type Category,
-    type IncomeRule,
-    type Transaction,
-    type TransactionFilters
+  categoriesApi,
+  incomeRulesApi,
+  transactionsApi,
+  type Category,
+  type IncomeRule,
+  type Transaction,
+  type TransactionFilters
 } from '@/lib/api';
 import {
-    ArrowDownCircle,
-    ArrowUpCircle,
-    ChevronLeft,
-    ChevronRight,
-    Filter,
-    Loader2,
-    Pencil,
-    Plus,
-    Trash2,
-    X
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -583,7 +583,7 @@ export default function TransactionsPage() {
                 type="date"
                 value={filters.startDate?.split('T')[0] || ''}
                 onChange={(e) => handleFilterChange('startDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)}
-                className="input-field"
+                className="input-field !border-none"
               />
             </div>
             <div>
@@ -592,7 +592,7 @@ export default function TransactionsPage() {
                 type="date"
                 value={filters.endDate?.split('T')[0] || ''}
                 onChange={(e) => handleFilterChange('endDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)}
-                className="input-field"
+                className="input-field !border-none"
               />
             </div>
             <div>

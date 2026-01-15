@@ -660,14 +660,64 @@ export const incomeRuleController = {
         return;
       }
 
-      // Default rules configuration
+      // Default rules configuration with subcategories
       const DEFAULT_RULES = [
-        { name: 'Metas', percentage: 10, color: '#f59e0b', icon: '🎯' },
-        { name: 'Conforto', percentage: 15, color: '#3b82f6', icon: '✨' },
-        { name: 'Prazeres', percentage: 10, color: '#ec4899', icon: '🎉' },
-        { name: 'Custo Fixo', percentage: 35, color: '#ef4444', icon: '🏠' },
-        { name: 'Liberdade Financeira', percentage: 25, color: '#22c55e', icon: '💰' },
-        { name: 'Conhecimento', percentage: 5, color: '#8b5cf6', icon: '📚' },
+        { 
+          name: 'Moradia', 
+          percentage: 35, 
+          color: '#ef4444', 
+          icon: '🏠',
+          items: ['Prestação Apartamento', 'Condomínio', 'IPTU + Taxas Municipais', 'Conta de Energia', 'Conta de Água', 'Conta de Gás', 'Operadora Celular', 'Internet', 'Supermercado', 'Açougue', 'Feira', 'Lanches', 'Padaria', 'Empregados', 'Lavanderia']
+        },
+        { 
+          name: 'Saúde', 
+          percentage: 10, 
+          color: '#22c55e', 
+          icon: '🏥',
+          items: ['Plano de Saúde', 'Médicos e Terapeutas', 'Dentista', 'Medicamentos', 'Outros']
+        },
+        { 
+          name: 'Transporte', 
+          percentage: 15, 
+          color: '#3b82f6', 
+          icon: '🚗',
+          items: ['Prestação', 'IPVA, DPVAT e Licenciamento', 'Seguro', 'Combustível', 'Estacionamentos', 'Lavagens', 'Mecânico', 'Multas', 'Avião', 'Ônibus', 'Trem', 'Táxi / Uber', 'Outros']
+        },
+        { 
+          name: 'Despesas Pessoais', 
+          percentage: 5, 
+          color: '#ec4899', 
+          icon: '💵',
+          items: ['Higiene Pessoal', 'Cosméticos', 'Acessórios', 'Cabeleireiro', 'Vestuário', 'Academia', 'Outros']
+        },
+        { 
+          name: 'Educação', 
+          percentage: 5, 
+          color: '#8b5cf6', 
+          icon: '📚',
+          items: ['Escola / Faculdade', 'Cursos', 'Material Escolar', 'Outros']
+        },
+        { 
+          name: 'Lazer', 
+          percentage: 10, 
+          color: '#f59e0b', 
+          icon: '🎉',
+          items: ['Restaurantes', 'iFood / Aplicativo', 'Livraria', 'Games', 'Filmes', 'Hospedagens', 'Passeios', 'Cinema', 'Netflix', 'Spotify', 'Outros']
+        },
+        { 
+          name: 'Outros', 
+          percentage: 5, 
+          color: '#6b7280', 
+          icon: '📦',
+          items: ['Tarifas Bancárias', 'Taxas Investimentos', 'Veterinário', 'Insumos Pets', 'Extras Diários', 'Outros']
+        },
+        { 
+          name: 'Despesas Temporárias', 
+          percentage: 15, 
+          color: '#06b6d4', 
+          icon: '⏰',
+          items: ['Manutenção Doméstica', 'Manutenção Veículo', 'Presentes', 'Móveis e Utilidades Domésticas', 'Eletrônicos', 'Decoração', 'Doações', 'Reserva de Consumo']
+        },
       ];
 
       // Delete all existing rules for this month (cascade deletes items)
@@ -675,7 +725,7 @@ export const incomeRuleController = {
         where: { userId, month, year },
       });
 
-      // Create new default rules
+      // Create new default rules with their subitems
       const createdRules = [];
       for (const rule of DEFAULT_RULES) {
         const newRule = await prisma.incomeRule.create({
@@ -689,14 +739,124 @@ export const incomeRuleController = {
             baseIncome,
             userId,
           },
-          include: { items: true },
         });
+
+        // Create subitems for this rule
+        const createdItems = [];
+        for (const itemName of rule.items) {
+          const newItem = await prisma.ruleItem.create({
+            data: {
+              name: itemName,
+              amount: 0,
+              ruleId: newRule.id,
+            },
+          });
+          createdItems.push({
+            ...newItem,
+            amount: Number(newItem.amount),
+          });
+        }
+
         createdRules.push({
           ...newRule,
           percentage: Number(newRule.percentage),
           baseIncome: Number(newRule.baseIncome),
-          items: [],
+          items: createdItems,
         });
+      }
+
+      // === PROPAGATE INSTALLMENT SUBITEMS ===
+      // Find pending installment transactions for this month that don't have a ruleItemId
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+      const pendingInstallments = await prisma.transaction.findMany({
+        where: {
+          userId,
+          isInstallment: true,
+          date: { gte: startOfMonth, lte: endOfMonth },
+          ruleItemId: null,
+          installmentNumber: { gt: 1 }, // Not the first installment
+        },
+      });
+
+      // Group by installmentGroupId to process each purchase once
+      const processedGroups = new Set<string>();
+
+      for (const transaction of pendingInstallments) {
+        if (!transaction.installmentGroupId || processedGroups.has(transaction.installmentGroupId)) {
+          continue;
+        }
+        processedGroups.add(transaction.installmentGroupId);
+
+        // Find the first installment to get the original ruleItem info
+        const firstInstallment = await prisma.transaction.findFirst({
+          where: {
+            installmentGroupId: transaction.installmentGroupId,
+            installmentNumber: 1,
+          },
+          include: { 
+            ruleItem: { 
+              include: { rule: true } 
+            },
+            incomeRule: true,
+          },
+        });
+
+        if (firstInstallment?.ruleItem) {
+          // Find the matching category in the newly created rules
+          const matchingRule = createdRules.find(r => r.name === firstInstallment.ruleItem!.rule.name);
+
+          if (matchingRule) {
+            // Check if subitem already exists
+            let existingItem = matchingRule.items.find(
+              (i: { name: string }) => i.name === firstInstallment.ruleItem!.name
+            );
+
+            if (!existingItem) {
+              // Create the subitem for this month
+              const newItem = await prisma.ruleItem.create({
+                data: {
+                  name: firstInstallment.ruleItem.name,
+                  amount: 0,
+                  ruleId: matchingRule.id,
+                },
+              });
+              existingItem = {
+                ...newItem,
+                amount: Number(newItem.amount),
+              };
+              matchingRule.items.push(existingItem);
+            }
+
+            // Link all installments of this month to the new subitem
+            await prisma.transaction.updateMany({
+              where: {
+                installmentGroupId: transaction.installmentGroupId,
+                date: { gte: startOfMonth, lte: endOfMonth },
+              },
+              data: {
+                ruleItemId: existingItem.id,
+                incomeRuleId: matchingRule.id,
+              },
+            });
+          }
+        } else if (firstInstallment?.incomeRule) {
+          // Transaction was linked to category (incomeRule) but not subitem
+          const matchingRule = createdRules.find(r => r.name === firstInstallment.incomeRule!.name);
+
+          if (matchingRule) {
+            await prisma.transaction.updateMany({
+              where: {
+                installmentGroupId: transaction.installmentGroupId,
+                date: { gte: startOfMonth, lte: endOfMonth },
+              },
+              data: {
+                incomeRuleId: matchingRule.id,
+              },
+            });
+          }
+        }
       }
 
       res.json({
@@ -851,6 +1011,162 @@ export const incomeRuleController = {
       res.status(500).json({
         success: false,
         message: 'Erro ao buscar gastos da regra',
+      });
+    }
+  },
+
+  // Sync installment subitems without resetting rules
+  async syncInstallments(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Não autorizado' });
+        return;
+      }
+
+      const { month, year } = req.body;
+
+      if (!month || !year) {
+        res.status(400).json({
+          success: false,
+          message: 'Mês e ano são obrigatórios',
+        });
+        return;
+      }
+
+      // Get existing rules for this month
+      const existingRules = await prisma.incomeRule.findMany({
+        where: { userId, month, year },
+        include: { items: true },
+      });
+
+      if (existingRules.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Nenhuma regra encontrada para este mês. Configure um salário base primeiro.',
+        });
+        return;
+      }
+
+      // Find pending installment transactions for this month
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+      const pendingInstallments = await prisma.transaction.findMany({
+        where: {
+          userId,
+          isInstallment: true,
+          date: { gte: startOfMonth, lte: endOfMonth },
+          ruleItemId: null,
+          installmentNumber: { gt: 1 },
+        },
+      });
+
+      if (pendingInstallments.length === 0) {
+        res.json({
+          success: true,
+          message: 'Nenhuma parcela pendente para sincronizar',
+          syncedCount: 0,
+        });
+        return;
+      }
+
+      // Group by installmentGroupId to process each purchase once
+      const processedGroups = new Set<string>();
+      let syncedCount = 0;
+      const addedSubitems: string[] = [];
+
+      for (const transaction of pendingInstallments) {
+        if (!transaction.installmentGroupId || processedGroups.has(transaction.installmentGroupId)) {
+          continue;
+        }
+        processedGroups.add(transaction.installmentGroupId);
+
+        // Find the first installment to get the original ruleItem info
+        const firstInstallment = await prisma.transaction.findFirst({
+          where: {
+            installmentGroupId: transaction.installmentGroupId,
+            installmentNumber: 1,
+          },
+          include: { 
+            ruleItem: { 
+              include: { rule: true } 
+            },
+            incomeRule: true,
+          },
+        });
+
+        if (firstInstallment?.ruleItem) {
+          // Find the matching category in existing rules
+          const matchingRule = existingRules.find(r => r.name === firstInstallment.ruleItem!.rule.name);
+
+          if (matchingRule) {
+            // Check if subitem already exists
+            let existingItem = matchingRule.items.find(
+              i => i.name === firstInstallment.ruleItem!.name
+            );
+
+            if (!existingItem) {
+              // Create the subitem for this month
+              const newItem = await prisma.ruleItem.create({
+                data: {
+                  name: firstInstallment.ruleItem.name,
+                  amount: 0,
+                  ruleId: matchingRule.id,
+                },
+              });
+              existingItem = newItem;
+              matchingRule.items.push(newItem);
+              addedSubitems.push(`${matchingRule.name} → ${newItem.name}`);
+            }
+
+            // Link all installments of this month to the subitem
+            await prisma.transaction.updateMany({
+              where: {
+                installmentGroupId: transaction.installmentGroupId,
+                date: { gte: startOfMonth, lte: endOfMonth },
+              },
+              data: {
+                ruleItemId: existingItem.id,
+                incomeRuleId: matchingRule.id,
+              },
+            });
+
+            syncedCount++;
+          }
+        } else if (firstInstallment?.incomeRule) {
+          // Transaction was linked to category but not subitem
+          const matchingRule = existingRules.find(r => r.name === firstInstallment.incomeRule!.name);
+
+          if (matchingRule) {
+            await prisma.transaction.updateMany({
+              where: {
+                installmentGroupId: transaction.installmentGroupId,
+                date: { gte: startOfMonth, lte: endOfMonth },
+              },
+              data: {
+                incomeRuleId: matchingRule.id,
+              },
+            });
+
+            syncedCount++;
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        message: syncedCount > 0 
+          ? `${syncedCount} parcela(s) sincronizada(s) com sucesso`
+          : 'Nenhuma parcela para sincronizar',
+        syncedCount,
+        addedSubitems,
+      });
+    } catch (error) {
+      console.error('Error syncing installments:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao sincronizar parcelas',
       });
     }
   },

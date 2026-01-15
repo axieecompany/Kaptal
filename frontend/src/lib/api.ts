@@ -156,6 +156,30 @@ export const transactionsApi = {
 };
 
 // Stats API
+export interface InsightsResponse {
+  success: boolean;
+  data: {
+    daysUntilBroke: number | null;
+    dailyAverage: number;
+    balance: number;
+    endOfMonthProjection: {
+      projected: number;
+      current: number;
+      daysRemaining: number;
+    };
+    pendingInstallments: {
+      total: number;
+      count: number;
+      byMonth: { month: string; amount: number }[];
+    };
+    savingsStreak: {
+      current: number;
+      best: number;
+      lastMonthResult: 'success' | 'fail' | 'pending';
+    };
+  };
+}
+
 export const statsApi = {
   getOverview: () => fetchApi<OverviewResponse>('/stats/overview'),
   getByCategory: (startDate?: string, endDate?: string) => {
@@ -166,6 +190,7 @@ export const statsApi = {
     return fetchApi<CategoryStatsResponse>(`/stats/by-category${query ? `?${query}` : ''}`);
   },
   getMonthly: () => fetchApi<MonthlyHistoryResponse>('/stats/monthly'),
+  getInsights: () => fetchApi<InsightsResponse>('/stats/insights'),
 };
 
 // Category Budgets API
@@ -328,6 +353,12 @@ export const incomeRulesApi = {
     fetchApi<{ success: boolean; message: string; data: IncomeRule[] }>('/income-rules/reset-to-defaults', {
       method: 'POST',
       body: JSON.stringify({ month, year, baseIncome }),
+    }),
+
+  syncInstallments: (month: number, year: number) =>
+    fetchApi<{ success: boolean; message: string; syncedCount: number; addedSubitems: string[] }>('/income-rules/sync-installments', {
+      method: 'POST',
+      body: JSON.stringify({ month, year }),
     }),
 };
 

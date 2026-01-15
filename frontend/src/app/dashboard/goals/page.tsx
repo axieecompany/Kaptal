@@ -3,27 +3,28 @@
 import React from 'react';
 
 import {
-    categoryBudgetsApi,
-    incomeRulesApi,
-    type BudgetsData,
-    type CreateIncomeRuleData,
-    type IncomeRule,
-    type RuleItem
+  categoryBudgetsApi,
+  incomeRulesApi,
+  type BudgetsData,
+  type CreateIncomeRuleData,
+  type IncomeRule,
+  type RuleItem
 } from '@/lib/api';
 import {
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    ChevronUp,
-    DollarSign,
-    Edit2,
-    Loader2,
-    Plus,
-    RotateCcw,
-    Trash2,
-    TrendingUp,
-    Wallet,
-    X
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  DollarSign,
+  Edit2,
+  Loader2,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Trash2,
+  TrendingUp,
+  Wallet,
+  X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -35,12 +36,14 @@ const AVAILABLE_ICONS = [
 
 // Default rules
 const DEFAULT_RULES = [
-  { name: 'Metas', percentage: 10, color: '#f59e0b', icon: '🎯' },
-  { name: 'Conforto', percentage: 15, color: '#3b82f6', icon: '✨' },
-  { name: 'Prazeres', percentage: 10, color: '#ec4899', icon: '🎉' },
-  { name: 'Custo Fixo', percentage: 35, color: '#ef4444', icon: '🏠' },
-  { name: 'Liberdade Financeira', percentage: 25, color: '#22c55e', icon: '💰' },
-  { name: 'Conhecimento', percentage: 5, color: '#8b5cf6', icon: '📚' },
+  { name: 'Moradia', percentage: 35, color: '#ef4444', icon: '🏠' },
+  { name: 'Saúde', percentage: 10, color: '#22c55e', icon: '🏥' },
+  { name: 'Transporte', percentage: 15, color: '#3b82f6', icon: '🚗' },
+  { name: 'Despesas Pessoais', percentage: 5, color: '#ec4899', icon: '💵' },
+  { name: 'Educação', percentage: 5, color: '#8b5cf6', icon: '📚' },
+  { name: 'Lazer', percentage: 10, color: '#f59e0b', icon: '🎉' },
+  { name: 'Outros', percentage: 5, color: '#6b7280', icon: '📦' },
+  { name: 'Despesas Temporárias', percentage: 15, color: '#06b6d4', icon: '⏰' },
 ];
 
 function formatCurrency(value: number): string {
@@ -375,6 +378,30 @@ export default function GoalsPage() {
     }
   };
 
+  // Sync installments without resetting
+  const handleSyncInstallments = async () => {
+    setIsSaving(true);
+    try {
+      const month = currentMonth.getMonth() + 1;
+      const year = currentMonth.getFullYear();
+
+      const result = await incomeRulesApi.syncInstallments(month, year);
+      
+      if (result.syncedCount > 0) {
+        alert(`${result.syncedCount} parcela(s) sincronizada(s)!\n\nSubitens adicionados:\n${result.addedSubitems.join('\n')}`);
+      } else {
+        alert(result.message);
+      }
+      
+      await loadData();
+    } catch (err: any) {
+      console.error('Error syncing installments:', err);
+      alert(err.message || 'Erro ao sincronizar parcelas');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const monthLabel = currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const getAmountFromPercentage = (pct: number) => (baseIncome * pct) / 100;
 
@@ -387,7 +414,7 @@ export default function GoalsPage() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-12">
+    <div className="space-y-6 sm:space-y-8 pb-12 w-full max-w-full">
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold">Gastos</h1>
@@ -433,19 +460,29 @@ export default function GoalsPage() {
           Nova Categoria
         </button>
         {hasRulesForCurrentMonth && incomeRules.length > 0 && (
-          <button
-            onClick={() => setShowResetModal(true)}
-            className="bg-red-500/10 hover:bg-red-500/20 text-red-500 px-5 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 active:scale-95"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Redefinir
-          </button>
+          <>
+            <button
+              onClick={handleSyncInstallments}
+              disabled={isSaving}
+              className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 px-5 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
+              Sincronizar Parcelas
+            </button>
+            <button
+              onClick={() => setShowResetModal(true)}
+              className="bg-red-500/10 hover:bg-red-500/20 text-red-500 px-5 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 active:scale-95"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Redefinir
+            </button>
+          </>
         )}
       </div>
 
       {/* Summary Table */}
       {(budgetsData && budgetsData.budgets.length > 0) || (hasRulesForCurrentMonth && incomeRules.length > 0) ? (
-        <div className="glass-card overflow-hidden">
+        <div className="glass-card overflow-hidden w-full max-w-full">
           <div className="p-6 thin-border-b bg-current/[0.01]">
             <h3 className="text-lg font-black flex items-center gap-2">
               <Wallet className="w-5 h-5 text-primary-500" />
@@ -453,16 +490,16 @@ export default function GoalsPage() {
             </h3>
           </div>
           
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Table container with constrained width to force scroll */}
+          <div className="w-full overflow-x-auto">
             <table className="w-full min-w-[700px]">
               <thead>
                 <tr className="thin-border-b bg-current/[0.01]">
-                  <th className="text-left py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Categoria</th>
-                  <th className="text-right py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Destinado</th>
-                  <th className="text-right py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Valor Gasto</th>
-                  <th className="text-right py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Teto Gastar</th>
-                  <th className="text-right py-4 px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Utilizado</th>
+                  <th className="text-left py-4 px-3 sm:px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Categoria</th>
+                  <th className="text-right py-4 px-3 sm:px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Destinado</th>
+                  <th className="text-right py-4 px-3 sm:px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Valor Gasto</th>
+                  <th className="text-right py-4 px-3 sm:px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Teto Gastar</th>
+                  <th className="text-right py-4 px-3 sm:px-6 text-[10px] font-black opacity-40 uppercase tracking-widest">Utilizado</th>
                 </tr>
               </thead>
               <tbody className="thin-divide">
@@ -480,7 +517,7 @@ export default function GoalsPage() {
                           className={`hover:bg-current/[0.02] transition-colors ${hasSubitems ? 'cursor-pointer' : ''}`}
                           onClick={() => hasSubitems && toggleCategory(item.categoryName)}
                         >
-                          <td className="py-4 px-6">
+                          <td className="py-4 px-3 sm:px-6">
                             <div className="flex items-center gap-3">
                               {hasSubitems ? (
                                 isExpanded ? (
@@ -515,7 +552,7 @@ export default function GoalsPage() {
                               )}
                             </div>
                           </td>
-                          <td className="py-4 px-6 text-right">
+                          <td className="py-4 px-3 sm:px-6 text-right whitespace-nowrap">
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -530,13 +567,13 @@ export default function GoalsPage() {
                               <Edit2 className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-all" />
                             </button>
                           </td>
-                          <td className="py-4 px-6 text-right">
+                          <td className="py-4 px-3 sm:px-6 text-right whitespace-nowrap">
                             <span className="text-red-500 font-black tabular-nums">{formatCurrency(item.spent)}</span>
                           </td>
-                          <td className="py-4 px-6 text-right">
+                          <td className="py-4 px-3 sm:px-6 text-right whitespace-nowrap">
                             <span className="text-emerald-500 font-black tabular-nums">{formatCurrency(item.budget)}</span>
                           </td>
-                          <td className="py-4 px-6 text-right">
+                          <td className="py-4 px-3 sm:px-6 text-right whitespace-nowrap">
                             <span className={`font-black tabular-nums ${
                               item.percentage >= 100 ? 'text-red-500' :
                               item.percentage >= 80 ? 'text-orange-500' :
@@ -673,7 +710,7 @@ export default function GoalsPage() {
                           <td className="py-4 px-4 text-right">
                              {(() => {
                               const spending = ruleSpending.get(rule.id);
-                              const percentage = spending ? (spending.totalSpent / budgetAmount) * 100 : 0;
+                              const percentage = spending && budgetAmount > 0 ? (spending.totalSpent / budgetAmount) * 100 : 0;
                               return (
                                 <span className={`font-medium ${percentage > 100 ? 'text-red-500' : 'text-green-400'}`}>
                                   {percentage.toFixed(2)}%

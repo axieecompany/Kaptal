@@ -1,25 +1,25 @@
 'use client';
 
 import {
-  CreateDividendData,
-  CreateHoldingData,
-  dividendsApi,
-  holdingsApi,
-  HoldingsSummary,
-  StockHolding,
+    CreateDividendData,
+    CreateHoldingData,
+    dividendsApi,
+    holdingsApi,
+    HoldingsSummary,
+    StockHolding,
 } from '@/lib/api';
 import {
-  BarChart3,
-  CircleDollarSign,
-  Edit3,
-  PieChart,
-  Plus,
-  RefreshCw,
-  Trash2,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-  X,
+    BarChart3,
+    CircleDollarSign,
+    Edit3,
+    PieChart,
+    Plus,
+    RefreshCw,
+    Trash2,
+    TrendingDown,
+    TrendingUp,
+    Wallet,
+    X,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -291,7 +291,7 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 w-full max-w-full">
       {/* Header */}
       <div className="py-2">
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -385,7 +385,7 @@ export default function PortfolioPage() {
       )}
 
       {/* Holdings Table */}
-      <div className="glass-card overflow-hidden">
+      <div className="glass-card overflow-hidden w-full max-w-full">
         <div className="p-4 thin-border-b bg-current/[0.01] flex items-center justify-between">
           <div>
             <h2 className="font-black text-lg">Meus Ativos</h2>
@@ -412,9 +412,9 @@ export default function PortfolioPage() {
             <p className="opacity-30 text-sm mb-4">Comece adicionando suas ações e FIIs</p>
             <button
               onClick={() => setShowAddHolding(true)}
-              className="btn-primary"
+              className="btn-primary flex items-center justify-center gap-2"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               Adicionar Primeiro Ativo
             </button>
           </div>

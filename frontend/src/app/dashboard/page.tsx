@@ -1,13 +1,17 @@
 'use client';
 
-import { statsApi, type MonthlyHistoryResponse, type OverviewResponse } from '@/lib/api';
+import { statsApi, type InsightsResponse, type MonthlyHistoryResponse, type OverviewResponse } from '@/lib/api';
 import {
-    ArrowDownRight,
-    ArrowUpRight,
-    Loader2,
-    TrendingDown,
-    TrendingUp,
-    Wallet
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  CreditCard,
+  Flame,
+  Loader2,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Wallet
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -28,18 +32,21 @@ function formatDate(dateString: string): string {
 export default function DashboardPage() {
   const [overview, setOverview] = useState<OverviewResponse['data'] | null>(null);
   const [monthly, setMonthly] = useState<MonthlyHistoryResponse['data'] | null>(null);
+  const [insights, setInsights] = useState<InsightsResponse['data'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [overviewRes, monthlyRes] = await Promise.all([
+        const [overviewRes, monthlyRes, insightsRes] = await Promise.all([
           statsApi.getOverview(),
           statsApi.getMonthly(),
+          statsApi.getInsights(),
         ]);
         setOverview(overviewRes.data);
         setMonthly(monthlyRes.data);
+        setInsights(insightsRes.data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
       } finally {
@@ -129,6 +136,101 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Insights Metrics */}
+      {insights && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Days Until Broke */}
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                insights.daysUntilBroke === null ? 'bg-emerald-500/10' :
+                insights.daysUntilBroke <= 7 ? 'bg-red-500/10' : 
+                insights.daysUntilBroke <= 15 ? 'bg-amber-500/10' : 'bg-emerald-500/10'
+              }`}>
+                <AlertTriangle className={`w-5 h-5 ${
+                  insights.daysUntilBroke === null ? 'text-emerald-500' :
+                  insights.daysUntilBroke <= 7 ? 'text-red-500' : 
+                  insights.daysUntilBroke <= 15 ? 'text-amber-500' : 'text-emerald-500'
+                }`} />
+              </div>
+              <div>
+                <p className="opacity-50 text-xs">Dias até acabar</p>
+                <p className={`text-xl font-bold ${
+                  insights.daysUntilBroke === null ? 'text-emerald-500' :
+                  insights.daysUntilBroke <= 7 ? 'text-red-500' : 
+                  insights.daysUntilBroke <= 15 ? 'text-amber-500' : 'text-emerald-500'
+                }`}>
+                  {insights.daysUntilBroke === null ? '∞' : `${insights.daysUntilBroke} dias`}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs opacity-40">
+              Gasto médio: {formatCurrency(insights.dailyAverage)}/dia
+            </p>
+          </div>
+
+          {/* End of Month Projection */}
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <Target className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="opacity-50 text-xs">Projeção do Mês</p>
+                <p className="text-xl font-bold text-blue-500">
+                  {formatCurrency(insights.endOfMonthProjection.projected)}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs opacity-40">
+              Faltam {insights.endOfMonthProjection.daysRemaining} dias
+            </p>
+          </div>
+
+          {/* Pending Installments */}
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="opacity-50 text-xs">Parcelas Pendentes</p>
+                <p className="text-xl font-bold text-amber-500">
+                  {formatCurrency(insights.pendingInstallments.total)}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs opacity-40">
+              {insights.pendingInstallments.count} parcela{insights.pendingInstallments.count !== 1 ? 's' : ''} restante{insights.pendingInstallments.count !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* Savings Streak */}
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                insights.savingsStreak.current > 0 ? 'bg-orange-500/10' : 'bg-gray-500/10'
+              }`}>
+                <Flame className={`w-5 h-5 ${
+                  insights.savingsStreak.current > 0 ? 'text-orange-500' : 'text-gray-500'
+                }`} />
+              </div>
+              <div>
+                <p className="opacity-50 text-xs">Streak de Economia</p>
+                <p className={`text-xl font-bold ${
+                  insights.savingsStreak.current > 0 ? 'text-orange-500' : 'text-gray-500'
+                }`}>
+                  {insights.savingsStreak.current} {insights.savingsStreak.current === 1 ? 'mês' : 'meses'}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs opacity-40">
+              Melhor: {insights.savingsStreak.best} meses
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Monthly Chart */}

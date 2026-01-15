@@ -19,6 +19,9 @@ router.post('/copy-from-month', incomeRuleController.copyFromMonth);
 // POST /income-rules/reset-to-defaults - Reset rules to defaults for a specific month
 router.post('/reset-to-defaults', incomeRuleController.resetToDefaults);
 
+// POST /income-rules/sync-installments - Sync installment subitems without resetting
+router.post('/sync-installments', incomeRuleController.syncInstallments);
+
 // PUT /income-rules/:id - Update an income rule
 router.put('/:id', incomeRuleController.update);
 
